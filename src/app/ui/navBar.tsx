@@ -1,10 +1,25 @@
+"use client";
+
+import { AuthButtons } from "@/app/ui/login/authButtons";
+import { useSession } from "next-auth/react";
+import { useEffect } from "react";
+
 export default function NavBar() {
+  const { data: session, status, update } = useSession();
+
+  // useEffect(() => {
+  //   if (status != "authenticated") {
+  //     update();
+  //   }
+  // }, [status]);
+  const username = session?.user?.name;
+
   return (
-    <div className="flex w-screen justify-center content-between place-items-center h-10 relative z-10 bg-slate-500 px-48">
-      <p className="text-center text-nowrap">Nav Bar</p>
-      <div className="flex w-screen justify-end content-end gap-2">
-        <button className="px-4 py-1 bg-slate-800 rounded-xl">Log in</button>
-        <button className="px-4 py-1 bg-slate-600 rounded-xl">Register</button>
+    <div className="flex w-screen justify-center content-between place-items-center h-10 relative z-10 bg-slate-500 py-8 px-64">
+      <p className="text-center text-nowrap text-2xl">Logo</p>
+      <div className="flex w-screen justify-end place-items-center content-end gap-4">
+        {session ? <p>Welcome, {username}!</p> : <p>Welcome!</p>}
+        <AuthButtons />
       </div>
     </div>
   );
