@@ -2,11 +2,10 @@
 
 import { authenticate } from "@/app/lib/actions";
 import { signOutUser } from "@/app/lib/actions";
-// import { Session } from "next-auth";
 import { useSession } from "next-auth/react";
 
 export function AuthButtons() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
 
   if (status == "authenticated") {
     return (

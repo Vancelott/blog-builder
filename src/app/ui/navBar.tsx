@@ -2,16 +2,10 @@
 
 import { AuthButtons } from "@/app/ui/login/authButtons";
 import { useSession } from "next-auth/react";
-import { useEffect } from "react";
 
 export default function NavBar() {
-  const { data: session, status, update } = useSession();
+  const { data: session } = useSession();
 
-  // useEffect(() => {
-  //   if (status != "authenticated") {
-  //     update();
-  //   }
-  // }, [status]);
   const username = session?.user?.name;
 
   return (
