@@ -1,23 +1,15 @@
 "use client";
 
 import { DynamicElement } from "@/app/ui/create/dynamicElement";
-// import { TextArea } from "@/app/ui/create/textArea";
 import { useState } from "react";
-
-interface Element {
-  id: number;
-  elementId: number;
-  tag: string;
-  style: string;
-  input: string;
-  placeholder: string;
-}
+import { IElement } from "@/app/types/index";
+import { createPage } from "@/app/lib/data";
 
 const styles: Array = [
   { type: "basic", tag: "textarea", className: "bg-red-400" },
 ];
 
-const elements: Array<Element> = [
+const elements: Array<IElement> = [
   {
     id: 0,
     elementId: 0,
@@ -26,79 +18,118 @@ const elements: Array<Element> = [
     input: "",
     placeholder: "Text Area",
   },
+  {
+    id: 0,
+    elementId: 1,
+    tag: "nav bar",
+    style: "basic",
+    input: "",
+    placeholder: "Side Navigation Bar",
+  },
 ];
 
 export default function Page() {
-  const [addedContent, setAddedContent] = useState<Element[]>([]);
+  // TODO add default content / create a new state variable for the default content
+  const [addedContent, setAddedContent] = useState<IElement[]>([]);
   const [showSelect, setShowSelect] = useState<boolean>(false);
+  const [showDelete, setShowDelete] = useState<boolean>(false);
   const [previewMode, setPreviewMode] = useState<boolean>(false);
 
-  const handleSubmit = (elementId: string) => {
-    const elementToBeAdded = elements.find(
-      (item) => item.elementId == elementId
-    );
-    elementToBeAdded.id = addedContent.length;
+  const handleSubmit = (elementId: number) => {
+    let elementToBeAdded: Element;
+    elements.map((item) => {
+      if (item.elementId == elementId) {
+        elementToBeAdded = { ...item };
+        elementToBeAdded.id = addedContent.length;
+      }
+    });
     setAddedContent((prevContent) => [...prevContent, elementToBeAdded]);
+    console.log(addedContent);
     setShowSelect(false);
   };
 
-  const handleDelete = (elementToDelete: Element) => {
+  const handleDelete = (elementToDelete: IElement) => {
     const updatedContent = addedContent.filter(
-      (element) => element.id !== elementToDelete.id
+      (element) => element.id != elementToDelete.id
     );
-    setAddedContent(updatedContent);
+    setAddedContent([...updatedContent]);
+  };
+
+  const handleShowDelete = (state: boolean) => {
+    setShowDelete(state);
   };
 
   return (
-    <div className="flex flex-col gap-4 w-full h-screen place-items-center py-36">
-      <div className="text-center">
-        <p>Create page!</p>
-        <p>{addedContent.length}</p>
-        <button
-          onClick={() => setPreviewMode(!previewMode)}
-          className="p-1 bg-orange-300 rounded-2xl text-black"
-        >
-          Preview
-        </button>
+    <div className="flex flex-col relative">
+      <div className="flex flex-col gap-4 w-full h-screen place-items-center justify-between pt-36 pb-10">
+        <div className="flex flex-col items-center gap-4">
+          <p>Create page!</p>
+          <button
+            // TODO make a handle function with a pop up if there are no added elements
+            onClick={() => setPreviewMode(!previewMode)}
+            className="p-1 bg-orange-300 rounded-2xl text-black"
+          >
+            {!previewMode ? "Preview Mode" : "Editing Mode"}
+          </button>
+          {showSelect && (
+            <select
+              defaultValue="default"
+              className="py-4 px-24 text-black text-lg mt-6"
+              onChange={(e) => handleSubmit(e.target.value)}
+            >
+              <option value="default" disabled hidden>
+                Select an element
+              </option>
+              {elements?.map((item, index) => (
+                <option key={index} value={item.elementId}>
+                  {item.placeholder}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+        <div className="flex flex-col gap-3">
+          {!previewMode && (
+            <button
+              onClick={() => {
+                setShowSelect(true);
+              }}
+              className="py-6 px-32 font-bold border-2 border-dashed border-orange-400 rounded-lg z-100"
+            >
+              Add
+            </button>
+          )}
+          {!previewMode && (
+            <button
+              onClick={() => {
+                createPage({ addedContent });
+              }}
+              className="py-6 px-32 font-bold border-2 border-dashed border-green-500 rounded-lg z-100"
+            >
+              Submit
+            </button>
+          )}
+        </div>
       </div>
-      <div className="flex flex-col gap-4">
+      <div className="flex gap-x-4 absolute">
         {addedContent.map((item, index) => (
           <div
             key={index}
-            className="flex gap-x-2 justify-center place-items-center"
+            className={`flex flex-col justify-center`}
+            // onMouseOver={() => handleShowDelete(!showDelete)}
           >
+            {showDelete && (
+              <button
+                onClick={() => handleDelete(item)}
+                className="px-2 py-1 bg-red-800 text-white"
+              >
+                X
+              </button>
+            )}
             <DynamicElement tag={item.tag} previewMode={previewMode} />
-            <button
-              onClick={() => handleDelete(item)}
-              className="px-2 py-1 bg-red-800 text-white"
-            >
-              X
-            </button>
           </div>
         ))}
       </div>
-      {showSelect && (
-        <select
-          defaultValue="2"
-          className="py-4 px-24 text-black text-lg mt-6"
-          onChange={(e) => handleSubmit(e.target.value)}
-        >
-          {elements?.map((item, index) => (
-            <option key={index} value={item.elementId}>
-              {item.placeholder}
-            </option>
-          ))}
-          <option value="2">Select an element</option>
-        </select>
-      )}
-      <button
-        onClick={() => {
-          setShowSelect(true);
-        }}
-        className="py-6 px-64 mt-6 font-bold border-2 border-dashed border-orange-400 rounded-lg"
-      >
-        Add
-      </button>
     </div>
   );
 }

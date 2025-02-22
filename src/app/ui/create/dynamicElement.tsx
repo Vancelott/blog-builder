@@ -21,7 +21,12 @@ export function DynamicElement({ tag, className, previewMode }: string) {
       </>
     );
   }
-  if (tag == "paragraph") {
-    return <p>{input}</p>;
+  if (tag == "nav bar") {
+    return (
+      <div className="flex flex-col h-screen w-28 justify-center content-between place-items-center relative z-10 bg-slate-500 py-8 px-52">
+        <p className="text-center text-nowrap text-2xl">Logo</p>
+        <p>About me: adfafasfafda</p>
+      </div>
+    );
   }
 }
