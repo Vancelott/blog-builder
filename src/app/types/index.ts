@@ -1,11 +1,13 @@
 export interface IElement {
   id: number;
-  elementId: number;
+  componentId: number;
   tag: string;
   style: string;
   input: string;
   placeholder: string;
   dnd: "Droppable" | "Draggable";
   parentId: number | null;
-  otherElements: IElement[];
+  otherElements?: IElement[];
+  isDropped: boolean;
+  gridId: string;
 }
