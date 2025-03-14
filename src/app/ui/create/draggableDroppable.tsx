@@ -2,7 +2,7 @@ import { React, PropsWithChildren } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 
 interface IDraggableDroppable {
-  id: number;
+  id: string;
 }
 
 export function DraggableDroppable(props: PropsWithChildren<IDraggableDroppable>) {

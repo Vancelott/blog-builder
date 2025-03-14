@@ -10,4 +10,5 @@ export interface IElement {
   otherElements?: IElement[];
   isDropped: boolean;
   gridId: string;
+  position: { x: number; y: number };
 }

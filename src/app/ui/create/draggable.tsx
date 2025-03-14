@@ -6,15 +6,18 @@ interface Draggable {
 }
 
 export function Draggable(props: PropsWithChildren<IDraggable>) {
+  // console.log("draggable props.id", props.id);
+
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: props.id,
   });
 
-  const style = transform
-    ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-      }
-    : undefined;
+  // const style = transform
+  //   ? {
+  //       transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+  //     }
+  //   : undefined;
+  const style = {};
 
   return (
     // TODO change the div?

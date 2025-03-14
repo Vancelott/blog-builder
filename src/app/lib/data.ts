@@ -34,7 +34,8 @@ export const updateUser = async (prevState, formData: FormData) => {
   }
 };
 
-export const createPage = async ({ data }: IElement[]) => {
+// export const createPage = async ({ data }: IElement[]) => {
+export const createPage = async (data) => {
   const session = await auth();
 
   if (!session.user.name) {
@@ -44,12 +45,28 @@ export const createPage = async ({ data }: IElement[]) => {
 
   try {
     // TODO pass the data correctly, atm the column is set as JSONB, but you are passing an array of objects fix either of the two
-    await pool.query(
-      `INSERT INTO pages (userId, slug, data, blog_ids)
-      VALUES ($1, $2, $3, '{}');`,
-      [session.user.id, session.user.name, data.addedContent]
+    console.log("data", data);
+    const page = await pool.query(
+      `SELECT * FROM pages
+      WHERE slug = $1;`,
+      [session.user.name]
     );
-    return { success: true };
+    if (!page) {
+      await pool.query(
+        `INSERT INTO pages (userId, slug, data, blog_ids)
+      VALUES ($1, $2, $3, '{}');`,
+        [session.user.id, session.user.name, data]
+      );
+      return { success: true };
+    } else {
+      // TODO once done, remove the update if you don't create a separate update handler
+      await pool.query(
+        `UPDATE pages
+      SET data = $1
+      WHERE slug = $2;`,
+        [data, session.user.name]
+      );
+    }
   } catch (error) {
     console.log(error);
     // return error.issues[0];
