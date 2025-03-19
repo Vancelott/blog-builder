@@ -18,6 +18,8 @@ export const updateUser = async (prevState, formData: FormData) => {
     .max(16, { message: "Maximum length is 16 characters." });
   const formName = formData.get("name") as string;
 
+  // TODO check if the username exists already
+
   try {
     schema.parse(formName);
     await pool.query(

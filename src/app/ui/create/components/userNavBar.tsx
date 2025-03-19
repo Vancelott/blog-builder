@@ -1,13 +1,71 @@
-import { PropsWithChildren } from "react";
+import { PropsWithChildren, useState, useEffect, useRef } from "react";
 
 interface IUserNavBar {
-  position: "top" | "bottom" | "left" | "right";
+  position: string;
+  ref: any;
 }
 
 export function UserNavBar(props: PropsWithChildren<IUserNavBar>) {
+  const navRef = useRef();
+  const [prevPosition, setPrevPosition] = useState();
+  const { position, ref } = props;
+
+  // const setPassedRef = useCallback(() => {
+  //   if (prevPosition !== position) {
+  //     ref({
+  //       offsetHeight: navRef.current.offsetHeight,
+  //       offsetWidth: navRef.current.offsetWidth,
+  //     });
+  //   } else {
+  //     ref({
+  //       offsetHeight: 0,
+  //       offsetWidth: 320,
+  //     });
+  //   }
+  // }, []);
+
+  // const updateSize = useCallback(() => {
+  //   if (prevPosition !== position) {
+  //     setPassedRef();
+  //     setPrevPosition(position);
+  //   } else {
+  //     setPassedRef();
+  //   }
+  // }, [position, setPassedRef, prevPosition]);
+
+  // useEffect(() => {
+  //   updateSize();
+  // }, [updateSize]);
+
+  // useEffect(() => {
+  //   if (prevPosition !== position) {
+  //     ref({
+  //       offsetHeight: navRef.current.offsetHeight,
+  //       offsetWidth: navRef.current.offsetWidth,
+  //     });
+  //     setPrevPosition(position);
+  //   } else {
+  //     ref({
+  //       offsetHeight: 0,
+  //       offsetWidth: 320,
+  //     });
+  //   }
+  // }, [position]);
+  useEffect(() => {
+    ref.current = navRef.current;
+  }, [position, ref, navRef]);
+
   return (
     <div>
-      <div className="flex flex-col h-screen w-28 justify-center place-items-center z-10 bg-slate-500 py-8 px-52">
+      {/* TODO make the navbar responsive on mobile, but make the top/bottom options like a drawer possibly */}
+      <div
+        ref={navRef}
+        className={`${
+          props.position
+            ? `${props.position}`
+            : "inset-y-0 left-0 w-80 h-screen place-items-center"
+        } flex flex-col absolute justify-start z-10 bg-slate-500 `}
+      >
         {/* <p className="text-center text-2xl">Logo</p>
         <p>
           About me: Lorem ipsum dolor sit amet consectetur adipisicing elit.

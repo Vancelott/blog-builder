@@ -15,6 +15,8 @@ interface IDynamicElement {
   childElements: Array;
   gridId: string;
   input: any;
+  position: string;
+  ref: any;
 }
 
 export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
@@ -33,14 +35,8 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
           if (mappedComponent.tag === props.tag) {
             const Component = mappedComponent.component || "div";
             return (
-              <div
-                key={props.id}
-                style={{
-                  left: `${props.element.position.left}px`,
-                  right: `${props.element.position.right}px`,
-                }}
-              >
-                <Component>
+              <div key={props.id}>
+                <Component handleInputChange={props.handleInputChange}>
                   {props.childElements &&
                     props.childElements.map((item) => {
                       const childComponentDef = Components.find(
@@ -51,13 +47,13 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
                         return;
                         <div>
                           <ChildComponent
+                            handleInputChange={props.handleInputChange}
                             key={item.id}
-                            style={{
-                              left: `${props.element.position.left}px`,
-                              right: `${props.element.position.right}px`,
-                            }}
+                            // style={{
+                            //   left: `${props.element.position.left}px`,
+                            //   right: `${props.element.position.right}px`,
+                            // }}
                           />
-                          <p>child</p>
                         </div>;
                       }
                       return null;
@@ -94,10 +90,10 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
                   <Component
                     handleInputChange={props.handleInputChange}
                     id={props.id}
-                    style={{
-                      left: `${props.element.position.left}px`,
-                      right: `${props.element.position.right}px`,
-                    }}
+                    // style={{
+                    //   left: `${props.element.position.left}px`,
+                    //   right: `${props.element.position.right}px`,
+                    // }}
                   />
                 </div>
               );
@@ -139,7 +135,7 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
 
   if (props.tag == "nav bar") {
     return (
-      <UserNavBar style={props.positionChange}>
+      <UserNavBar style={props.positionChange} position={props.position} ref={props.ref}>
         {props.childElements &&
           props.childElements.map((element, index) => (
             <div key={index}>
