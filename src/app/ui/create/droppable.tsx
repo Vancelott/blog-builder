@@ -6,6 +6,7 @@ import { useDroppable } from "@dnd-kit/core";
 interface IDroppable {
   id: string;
   className: string;
+  style: string;
 }
 
 export function Droppable(props: PropsWithChildren<IDroppable>) {
@@ -21,7 +22,7 @@ export function Droppable(props: PropsWithChildren<IDroppable>) {
   const style = {};
 
   return (
-    <div ref={setNodeRef} style={style} className={props.className}>
+    <div ref={setNodeRef} style={props.style} className={props.className}>
       {props.children}
     </div>
   );

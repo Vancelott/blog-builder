@@ -174,8 +174,8 @@ export default function Page() {
     const { activatorEvent, active, collisions, delta, over } = event;
 
     console.log("activatorEvent", activatorEvent);
-    console.log("delta", delta);
     console.log("over", over);
+    console.log("collisions", collisions);
 
     if (active === null || over === null) {
       // TODO handle this with an actual error
@@ -188,8 +188,6 @@ export default function Page() {
 
     const parentCenterX = (over.rect.width + over.rect.left) / 2;
     const parentCenterY = (over.rect.height + over.rect.top) / 2;
-    console.log("parentCenterX", parentCenterX);
-    console.log("parentCenterY", parentCenterY);
 
     // console.log("over", over);
 
@@ -214,7 +212,6 @@ export default function Page() {
     //   return;
     // }
 
-    console.log("newStatus", newStatus);
     setAddedContent((prevAddedContent) => {
       return prevAddedContent.map((component) => {
         if (component.id === elementId) {
@@ -224,20 +221,21 @@ export default function Page() {
               gridId: newStatus,
               isDropped: true,
               position: {
-                // x: activatorEvent.screenX + component.position.x,
-                // y: activatorEvent.screenY + component.position.y,
-                x: delta.x + component.position.x,
-                y: delta.y + component.position.y,
+                x: component.position.x + delta.x,
+                y: component.position.y + delta.y,
               },
             };
           } else {
             return {
               ...component,
-              parentId: newStatus,
+              gridId: newStatus,
+              // parentId: newStatus,
               isDropped: true,
               position: {
-                x: delta.x + component.position.x,
-                y: delta.y + component.position.y,
+                // x: delta.x + component.position.x,
+                // y: delta.y + component.position.y,
+                x: component.position.x + delta.x,
+                y: component.position.y + delta.y,
               },
             };
           }
@@ -329,18 +327,23 @@ export default function Page() {
         {showGrid && (
           <div
             style={{ navBarSize }}
-            className={`grid grid-cols-[repeat(auto-fill,minmax(22px,22px))] grid-rows-[repeat(auto-fill,minmax(22px,22px))] absolute w-full h-screen bg-[linear-gradient(to_right,#306f7a_1px,transparent_1px),linear-gradient(to_bottom,#306f7a_1px,transparent_1px)] bg-[size:22px_22px]`}
+            className={`grid grid-cols-[repeat(auto-fill,minmax(20px,20px))] grid-rows-[repeat(auto-fill,minmax(20px,20px))] absolute w-full h-screen bg-[linear-gradient(to_right,#306f7a_1px,transparent_1px),linear-gradient(to_bottom,#306f7a_1px,transparent_1px)] bg-[size:20px_20px]`}
           ></div>
         )}
         {/* TODO add the dynamic style from the navbar */}
-        <Droppable id={"mainGrid"} className="flex pl-32 h-screen w-full absolute">
+        <Droppable
+          id={"mainGrid"}
+          // className="flex h-screen w-full absolute z-20"
+          className="flex h-screen w-full z-20"
+          // style={navBarSize}
+        >
           {/* <Droppable id={gridItem.gridId} key={index} className="w-full h-full"> */}
           {addedContent
             .filter((component) => component.gridId !== null)
             .map((component) => (
               <div
                 key={component.id}
-                className="z-5"
+                className="z-5 absolute"
                 style={{
                   transform: `translate3d(${component.position.x}px, ${component.position.y}px, 0)`,
                 }}
@@ -369,7 +372,7 @@ export default function Page() {
                 ) : (
                   <>
                     {/* <PositionButtons handlePositionChange={handlePositionChange} /> */}
-                    <Draggable id={component.id} className="z-40">
+                    <Draggable id={component.id} className="z-40 absolute">
                       <DynamicElement
                         tag={component.tag}
                         id={component.id}
@@ -405,7 +408,7 @@ export default function Page() {
 
           {/* ))} */}
         </Droppable>
-        <div className="flex flex-col gap-4 w-full h-screen place-items-center justify-end pt-36 pb-4">
+        <div className="flex flex-col gap-4 w-full h-screen place-items-center justify-end pt-36 pb-4 relative">
           <div className="flex flex-col items-center gap-4">
             <button
               // TODO make a handle function with a pop up if there are no added elements
@@ -460,7 +463,8 @@ export default function Page() {
             )}
           </div>
         </div>
-        <div className="flex flex-col w-full h-screen justify-center z-[15] absolute">
+        {/* TODO delete? */}
+        <div className="flex flex-col w-full h-screen justify-center absolute">
           {/* <div className="flex w-full flex-row gap-x-4"> */}
           {addedContent.map((item, index) => (
             <div
@@ -488,29 +492,26 @@ export default function Page() {
                   />
                 </Draggable>
               ) : item.gridId === null ? (
-                <div className="flex flex-col h-screen">
-                  {/* <DraggableDroppable id={item.id} className="flex flex-col relative"> */}
-                  <Droppable id={item.id} className="flex flex-col">
-                    {/* TODO wrap the child elements in a draggable? Maybe there should be a dynamic element for the parent component, and the childElements are passed in as actual children*/}
-                    <DynamicElement
-                      ref={navBarSizeRef}
-                      key={item.id}
-                      tag={item.tag}
-                      style={positionStyle}
-                      previewMode={previewMode}
-                      isDropped={isDropped}
-                      position={positionStyle}
-                      childElements={addedContent.filter(
-                        (items) => items.parentId === item.id
-                      )}
-                    >
-                      <div className="z-20 mt-8">
-                        <PositionButtons handlePositionChange={handlePositionChange} />
-                      </div>
-                    </DynamicElement>
-                  </Droppable>
-                  {/* </DraggableDroppable> */}
-                </div>
+                <Droppable id={item.id}>
+                  {/* TODO wrap the child elements in a draggable? Maybe there should be a dynamic element for the parent component, and the childElements are passed in as actual children*/}
+                  <DynamicElement
+                    ref={navBarSizeRef}
+                    key={item.id}
+                    tag={item.tag}
+                    style={positionStyle}
+                    previewMode={previewMode}
+                    isDropped={isDropped}
+                    position={positionStyle}
+                    childElements={addedContent.filter(
+                      (items) => items.parentId === item.id
+                    )}
+                  >
+                    {/* TODO fix this as its not clickable unless the parent div has the highest z-index */}
+                    <div className="z-20 mt-8">
+                      <PositionButtons handlePositionChange={handlePositionChange} />
+                    </div>
+                  </DynamicElement>
+                </Droppable>
               ) : null}
             </div>
           ))}

@@ -53,7 +53,7 @@ export function UserNavBar(props: PropsWithChildren<IUserNavBar>) {
   // }, [position]);
   useEffect(() => {
     ref.current = navRef.current;
-  }, [position, ref, navRef]);
+  }, [ref, navRef]);
 
   return (
     <div>
