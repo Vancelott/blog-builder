@@ -4,16 +4,14 @@ import { useState } from "react";
 import { TextArea } from "@/app/ui/create/components/textArea";
 import { UserNavBar } from "@/app/ui/create/components/userNavBar";
 import { PropsWithChildren } from "react";
+import { PositionButtons } from "@/app/ui/create/components/positionButtons";
 
 interface IDynamicElement {
-  tag: string;
-  id: number;
   element: any;
   className: string;
   previewMode: boolean;
   isDropped: boolean;
   childElements: Array;
-  gridId: string;
   input: any;
   position: string;
   ref: any;
@@ -27,15 +25,15 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
     { tag: "nav bar", component: UserNavBar },
   ];
 
-  if (props.gridId && props.childElements?.length > 0) {
+  if (props.element.gridId && props.childElements?.length > 0) {
     return (
       <div>
         <p className="text-2xl text-yellow-400">{positionChange}</p>
         {Components.map((mappedComponent) => {
-          if (mappedComponent.tag === props.tag) {
+          if (mappedComponent.tag === props.element.tag) {
             const Component = mappedComponent.component || "div";
             return (
-              <div key={props.id}>
+              <div key={props.element.id}>
                 <Component handleInputChange={props.handleInputChange}>
                   {props.childElements &&
                     props.childElements.map((item) => {
@@ -67,7 +65,7 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
       </div>
     );
   }
-  if (props.gridId) {
+  if (props.element.gridId) {
     return (
       <div
         style={{
@@ -76,20 +74,20 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
         }}
       >
         {Components.map((mappedComponent) => {
-          if (mappedComponent.tag === props.tag) {
+          if (mappedComponent.tag === props.element.tag) {
             const Component = mappedComponent.component || "div";
             if (props.previewMode) {
               return (
-                <div key={props.id}>
+                <div key={props.element.id}>
                   <p>{props.input}</p>
                 </div>
               );
             } else {
               return (
-                <div key={props.id}>
+                <div key={props.element.id}>
                   <Component
                     handleInputChange={props.handleInputChange}
-                    id={props.id}
+                    id={props.element.id}
                     // style={{
                     //   left: `${props.element.position.left}px`,
                     //   right: `${props.element.position.right}px`,
@@ -105,20 +103,20 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
     );
   }
 
-  if (props.gridId && props.previewMode) {
+  if (props.element.gridId && props.previewMode) {
     return (
-      <div key={props.id}>
+      <div key={props.element.id}>
         <p>{props.input}</p>
       </div>
     );
   }
 
-  // if (props.tag == "textarea" && props.previewMode) {
+  // if (props.element.tag == "textarea" && props.previewMode) {
   //   console.log("props.previewMode", props.previewMode);
   //   return <p>{textAreaInput.length > 0 ? textAreaInput : "No text"}</p>;
   // }
 
-  if (props.tag == "textarea") {
+  if (props.element.tag == "textarea") {
     return (
       <>
         <TextArea
@@ -133,14 +131,14 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
     );
   }
 
-  if (props.tag == "nav bar") {
+  if (props.element.tag == "nav bar") {
     return (
       <UserNavBar style={props.positionChange} position={props.position} ref={props.ref}>
         {props.childElements &&
           props.childElements.map((element, index) => (
             <div key={index}>
               {Components.map((mappedComponent, componentsIndex) => {
-                if (mappedComponent.tag == element.tag) {
+                if (mappedComponent.tag == props.element.tag) {
                   const Component = mappedComponent.component || "div";
                   return (
                     <Component key={componentsIndex}>
@@ -157,6 +155,9 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
             </div>
           ))}
         {props.children}
+        <div className="z-20 mt-8">
+          <PositionButtons />
+        </div>
       </UserNavBar>
     );
   }

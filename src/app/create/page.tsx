@@ -72,9 +72,14 @@ export default function Page() {
   const [positionStyle, setPositionStyle] = useState("");
   const [navBarSize, setNavBarSize] = useState(null);
   const [posState, setPosState] = useState("");
+  const [screenSize, setScreenSize] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
 
   const navBarSizeRef = useRef(null);
   const draggableRef = useRef(null);
+  const windowRef = useRef(window);
 
   const mouseSensor = useSensor(MouseSensor, {
     // Require the mouse to move by 10 pixels before activating
@@ -109,6 +114,22 @@ export default function Page() {
       setNavBarSize({ marginLeft: navBarSizeRef.current.offsetWidth + "px" });
     }
   }, [navBarSizeRef, posState]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setScreenSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    // Clean up the event listener when the component unmounts
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [screenSize]);
 
   const handlePositionChange = (pos: string) => {
     setNavBarSize(null);
@@ -173,10 +194,6 @@ export default function Page() {
   const handleDragEnd = (event: DragEndEvent) => {
     const { activatorEvent, active, collisions, delta, over } = event;
 
-    console.log("activatorEvent", activatorEvent);
-    console.log("over", over);
-    console.log("collisions", collisions);
-
     if (active === null || over === null) {
       // TODO handle this with an actual error
       console.log("null");
@@ -186,31 +203,31 @@ export default function Page() {
     const newStatus = over.id as string | number;
     const draggedComponent = addedContent.find((item) => item.id === elementId);
 
-    const parentCenterX = (over.rect.width + over.rect.left) / 2;
-    const parentCenterY = (over.rect.height + over.rect.top) / 2;
+    // const parentCenterX = (over.rect.width + over.rect.left) / 2;
+    // const parentCenterY = (over.rect.height + over.rect.top) / 2;
 
-    // console.log("over", over);
+    console.log("draggableRef", draggableRef);
 
-    // console.log("activatorEvent.screenX", activatorEvent.screenX);
-    // console.log("activatorEvent.screenY", activatorEvent.screenY);
-
-    // if (
-    //   // kind of works, but not at 100%
-    //   // delta.x + draggedComponent.position.x > parentCenterX ||
-    //   // delta.y + draggedComponent.position.y > parentCenterY
-    //   delta.x + draggedComponent.position.x > parentCenterX ||
-    //   delta.y + draggedComponent.position.y > parentCenterY
-    // ) {
-    //   console.log("Outside of parent element");
-    //   return;
-    // }
-    // if (
-    //   delta.x + draggedComponent.position.x < 0 ||
-    //   delta.y + draggedComponent.position.y < 0
-    // ) {
-    //   console.log("Outside of parent element");
-    //   return;
-    // }
+    if (
+      // // kind of works, but not at 100% (dropping on the right edge doesn't work properly)
+      // delta.x + draggedComponent.position.x > over.rect.width * 0.95 ||
+      // delta.y + draggedComponent.position.y > over.rect.height * 0.9
+      delta.x + draggedComponent.position.x + draggableRef.current.offsetWidth >
+        over.rect.width ||
+      delta.y + draggedComponent.position.y + draggableRef.current.offsetHeight >
+        over.rect.height
+    ) {
+      // TODO instead of returning, should the component be placed at the max value of whichever axis overflowed?
+      console.log("Outside of parent element");
+      return;
+    }
+    // TODO should the user be allowed to place elements outside of the window's width/height?
+    if (
+      delta.x + draggedComponent.position.x < 0 ||
+      delta.y + draggedComponent.position.y < 0
+    ) {
+      return;
+    }
 
     setAddedContent((prevAddedContent) => {
       return prevAddedContent.map((component) => {
@@ -221,8 +238,10 @@ export default function Page() {
               gridId: newStatus,
               isDropped: true,
               position: {
-                x: component.position.x + delta.x,
-                y: component.position.y + delta.y,
+                // x: component.position.x + delta.x,
+                // y: component.position.y + delta.y,
+                x: ((component.position.x + delta.x) / screenSize.width) * 100,
+                y: ((component.position.y + delta.y) / screenSize.height) * 100,
               },
             };
           } else {
@@ -269,54 +288,11 @@ export default function Page() {
     });
   };
 
-  const Grid = [
-    {
-      gridId: "gridA",
-      name: "A",
-    },
-    {
-      gridId: "gridB",
-      name: "B",
-    },
-    {
-      gridId: "gridC",
-      name: "C",
-    },
-    {
-      gridId: "gridD",
-      name: "D",
-    },
-    {
-      gridId: "gridE",
-      name: "E",
-    },
-    {
-      gridId: "gridF",
-      name: "F",
-    },
-    {
-      gridId: "gridG",
-      name: "G",
-    },
-    {
-      gridId: "gridH",
-      name: "H",
-    },
-    {
-      gridId: "gridI",
-      name: "I",
-    },
-    {
-      gridId: "gridJ",
-      name: "J",
-    },
-  ];
-
   const gridSize = 20; // pixels
   const snapToGridModifier = createSnapModifier(gridSize);
 
   return (
-    <div className="flex flex-col h-screen w-full relative">
+    <div className="flex flex-col h-screen w-full relative flex-wrap overflow-hidden">
       <DndContext
         onDragEnd={handleDragEnd}
         onDragStart={handleDragStart}
@@ -334,61 +310,59 @@ export default function Page() {
         <Droppable
           id={"mainGrid"}
           // className="flex h-screen w-full absolute z-20"
-          className="flex h-screen w-full z-20"
+          className="flex h-screen w-full z-20 absolute"
           // style={navBarSize}
         >
           {/* <Droppable id={gridItem.gridId} key={index} className="w-full h-full"> */}
-          {addedContent
-            .filter((component) => component.gridId !== null)
-            .map((component) => (
-              <div
-                key={component.id}
-                className="z-5 absolute"
-                style={{
-                  transform: `translate3d(${component.position.x}px, ${component.position.y}px, 0)`,
-                }}
-                ref={draggableRef}
-              >
-                {component.dnd === "Droppable" ? (
-                  <>
-                    {/* <PositionButtons handlePositionChange={handlePositionChange} /> */}
-                    <DraggableDroppable id={component.id} className="z-40">
-                      <DynamicElement
-                        tag={component.tag}
-                        id={component.id}
-                        element={component}
-                        gridId={component.gridId}
-                        handleInputChange={handleInputChange}
-                        previewMode={previewMode}
-                        input={component.input}
-                        childElements={addedContent
-                          .filter(
-                            (items) => items.id === component.id && items.gridId !== null
-                          )
-                          .flatMap((item) => item.otherElements || [])}
-                      />
-                    </DraggableDroppable>
-                  </>
-                ) : (
-                  <>
-                    {/* <PositionButtons handlePositionChange={handlePositionChange} /> */}
-                    <Draggable id={component.id} className="z-40 absolute">
-                      <DynamicElement
-                        tag={component.tag}
-                        id={component.id}
-                        element={component}
-                        gridId={component.gridId}
-                        handleInputChange={handleInputChange}
-                        previewMode={previewMode}
-                        input={component.input}
-                      />
-                      <p>{component.position.x}</p>
-                      <p>{component.position.y}</p>
-                    </Draggable>
-                  </>
-                )}
-              </div>
-            ))}
+          {addedContent.map((component) => (
+            <div
+              key={component.id}
+              className="z-5 absolute"
+              style={{
+                transform: `translate3d(${
+                  (component.position.x / 100) * screenSize.width
+                }px, ${(component.position.y / 100) * screenSize.height}px, 0)`,
+              }}
+              ref={draggableRef}
+            >
+              {component.dnd === "Droppable" ? (
+                <>
+                  {/* <PositionButtons handlePositionChange={handlePositionChange} /> */}
+                  <DraggableDroppable id={component.id} className="z-40">
+                    <DynamicElement
+                      element={component}
+                      handleInputChange={handleInputChange}
+                      previewMode={previewMode}
+                      input={component.input}
+                      childElements={addedContent
+                        .filter(
+                          (items) => items.id === component.id && items.gridId !== null
+                        )
+                        .flatMap((item) => item.otherElements || [])}
+                      ref={component.tag === "nav bar" ? navBarSizeRef : null}
+                    />
+                  </DraggableDroppable>
+                </>
+              ) : (
+                <>
+                  {/* <PositionButtons handlePositionChange={handlePositionChange} /> */}
+                  <Draggable id={component.id} className="z-40 absolute">
+                    <DynamicElement
+                      tag={component.tag}
+                      id={component.id}
+                      element={component}
+                      gridId={component.gridId}
+                      handleInputChange={handleInputChange}
+                      previewMode={previewMode}
+                      input={component.input}
+                    />
+                    <p>x: {component.position.x}</p>
+                    <p>y: {component.position.y}</p>
+                  </Draggable>
+                </>
+              )}
+            </div>
+          ))}
           <DragOverlay>
             {addedContent
               .filter((item) => item?.id === draggingComponentId)
@@ -464,15 +438,11 @@ export default function Page() {
           </div>
         </div>
         {/* TODO delete? */}
-        <div className="flex flex-col w-full h-screen justify-center absolute">
-          {/* <div className="flex w-full flex-row gap-x-4"> */}
+        {/* <div className="flex flex-col w-full h-screen justify-center absolute">
           {addedContent.map((item, index) => (
             <div
               // key={index}
               key={item.id}
-              // className={`flex flex-col w-full h-screen justify-center z-10 absolute`}
-              // className={`flex flex-col w-full h-screen justify-center z-10`}
-              // onMouseOver={() => handleShowDelete(!showDelete)}
             >
               {showDelete && (
                 <button
@@ -488,12 +458,10 @@ export default function Page() {
                     tag={item.tag}
                     previewMode={previewMode}
                     isDropped={item.isDropped}
-                    // className={`${item.isDropped == true ? "hidden" : ""}`}
                   />
                 </Draggable>
               ) : item.gridId === null ? (
                 <Droppable id={item.id}>
-                  {/* TODO wrap the child elements in a draggable? Maybe there should be a dynamic element for the parent component, and the childElements are passed in as actual children*/}
                   <DynamicElement
                     ref={navBarSizeRef}
                     key={item.id}
@@ -506,7 +474,6 @@ export default function Page() {
                       (items) => items.parentId === item.id
                     )}
                   >
-                    {/* TODO fix this as its not clickable unless the parent div has the highest z-index */}
                     <div className="z-20 mt-8">
                       <PositionButtons handlePositionChange={handlePositionChange} />
                     </div>
@@ -515,7 +482,7 @@ export default function Page() {
               ) : null}
             </div>
           ))}
-        </div>
+        </div> */}
       </DndContext>
     </div>
   );
