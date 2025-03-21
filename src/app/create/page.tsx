@@ -17,9 +17,17 @@ import {
 import { createSnapModifier, restrictToParentElement } from "@dnd-kit/modifiers";
 import { Draggable } from "@/app/ui/create/draggable";
 import { Droppable } from "@/app/ui/create/droppable";
+import { Sortable } from "@/app/ui/create/sortable";
 import { DraggableDroppable } from "@/app/ui/create/draggableDroppable";
 import { PositionButtons } from "@/app/ui/create/components/positionButtons";
 import { useRef, useCallback, useEffect } from "react";
+import {
+  SortableContext,
+  rectSwappingStrategy,
+  rectSortingStrategy,
+  arrayMove,
+  arraySwap,
+} from "@dnd-kit/sortable";
 
 const styles: Array = [
   {
@@ -206,8 +214,6 @@ export default function Page() {
     // const parentCenterX = (over.rect.width + over.rect.left) / 2;
     // const parentCenterY = (over.rect.height + over.rect.top) / 2;
 
-    console.log("draggableRef", draggableRef);
-
     if (
       // // kind of works, but not at 100% (dropping on the right edge doesn't work properly)
       // delta.x + draggedComponent.position.x > over.rect.width * 0.95 ||
@@ -229,48 +235,73 @@ export default function Page() {
       return;
     }
 
-    setAddedContent((prevAddedContent) => {
-      return prevAddedContent.map((component) => {
-        if (component.id === elementId) {
-          if (isNaN(newStatus)) {
+    // handles the swapping of components (if elementId == newStatus, it just means the component has been moved, and not swapped)
+    if (collisions.length > 1 && elementId !== newStatus) {
+      const item1 = addedContent.find((item) => item.id === active.id);
+      const item2 = addedContent.find((item) => item.id === over.id);
+
+      setAddedContent((prevAddedContent) => {
+        return prevAddedContent.map((component) => {
+          if (component.id === item1.id) {
             return {
               ...component,
-              gridId: newStatus,
-              isDropped: true,
-              position: {
-                // x: component.position.x + delta.x,
-                // y: component.position.y + delta.y,
-                x: ((component.position.x + delta.x) / screenSize.width) * 100,
-                y: ((component.position.y + delta.y) / screenSize.height) * 100,
-              },
+              position: item2.position,
             };
-          } else {
+          } else if (component.id === item2.id) {
             return {
               ...component,
-              gridId: newStatus,
-              // parentId: newStatus,
-              isDropped: true,
-              position: {
-                // x: delta.x + component.position.x,
-                // y: delta.y + component.position.y,
-                x: component.position.x + delta.x,
-                y: component.position.y + delta.y,
-              },
+              position: item1.position,
             };
           }
-        }
-
-        if (component.id === newStatus) {
-          const updatedElement = prevAddedContent.find((item) => item.id === elementId);
-          return {
-            ...component,
-            otherElements: [...component.otherElements, updatedElement],
-          };
-        }
-
-        return component;
+        });
+        return arraySwap(component, item1.id, item2.id);
       });
-    });
+    } else {
+      setAddedContent((prevAddedContent) => {
+        return prevAddedContent.map((component) => {
+          if (component.id === elementId) {
+            if (isNaN(newStatus)) {
+              console.log("");
+              return {
+                ...component,
+                gridId: newStatus,
+                isDropped: true,
+                position: {
+                  x: component.position.x + delta.x,
+                  y: component.position.y + delta.y,
+                  // x: ((component.position.x + delta.x) / screenSize.width) * 100,
+                  // y: ((component.position.y + delta.y) / screenSize.height) * 100,
+                },
+              };
+            } else {
+              return {
+                ...component,
+                gridId: newStatus,
+                // parentId: newStatus,
+                isDropped: true,
+                position: {
+                  // x: delta.x + component.position.x,
+                  // y: delta.y + component.position.y,
+                  x: component.position.x + delta.x,
+                  y: component.position.y + delta.y,
+                },
+              };
+            }
+          }
+
+          // if (component.id === newStatus) {
+          //   const updatedElement = prevAddedContent.find((item) => item.id === elementId);
+          //   return {
+          //     ...component,
+          //     otherElements: [...component.otherElements, updatedElement],
+          //   };
+          // }
+
+          // return arrayMove(component, elementId, newStatus);
+          return component;
+        });
+      });
+    }
 
     setIsDropped(false);
   };
@@ -291,6 +322,32 @@ export default function Page() {
   const gridSize = 20; // pixels
   const snapToGridModifier = createSnapModifier(gridSize);
 
+  const isOverlapping = (comp1, comp2) => {
+    if (!comp1) {
+      return false;
+    }
+
+    if (comp1.position.x > comp2.position.x || comp1.position.y > comp2.position.y) {
+      // setAddedContent((prevAddedContent) => {
+      //   return prevAddedContent.map((component) => {
+      //     if (component.id === comp2.id) {
+      //       return {
+      //         ...component,
+      //         position: {
+      //           x: comp1.position.x - 150,
+      //           y: comp1.position.y - 150,
+      //         },
+      //       };
+      //     }
+      //     return component;
+      //   });
+      // });
+      return true;
+    } else {
+      return false;
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen w-full relative flex-wrap overflow-hidden">
       <DndContext
@@ -310,73 +367,126 @@ export default function Page() {
         <Droppable
           id={"mainGrid"}
           // className="flex h-screen w-full absolute z-20"
-          className="flex h-screen w-full z-20 absolute"
+          className="flex flex-row gap-32 min-w-0 h-screen w-full z-20 absolute"
           // style={navBarSize}
         >
-          {/* <Droppable id={gridItem.gridId} key={index} className="w-full h-full"> */}
-          {addedContent.map((component) => (
-            <div
-              key={component.id}
-              className="z-5 absolute"
-              style={{
-                transform: `translate3d(${
-                  (component.position.x / 100) * screenSize.width
-                }px, ${(component.position.y / 100) * screenSize.height}px, 0)`,
-              }}
-              ref={draggableRef}
-            >
-              {component.dnd === "Droppable" ? (
-                <>
-                  {/* <PositionButtons handlePositionChange={handlePositionChange} /> */}
-                  <DraggableDroppable id={component.id} className="z-40">
-                    <DynamicElement
-                      element={component}
-                      handleInputChange={handleInputChange}
-                      previewMode={previewMode}
-                      input={component.input}
-                      childElements={addedContent
-                        .filter(
-                          (items) => items.id === component.id && items.gridId !== null
-                        )
-                        .flatMap((item) => item.otherElements || [])}
-                      ref={component.tag === "nav bar" ? navBarSizeRef : null}
-                    />
-                  </DraggableDroppable>
-                </>
-              ) : (
-                <>
-                  {/* <PositionButtons handlePositionChange={handlePositionChange} /> */}
-                  <Draggable id={component.id} className="z-40 absolute">
-                    <DynamicElement
-                      tag={component.tag}
+          <SortableContext
+            items={addedContent.map((component) => component)}
+            strategy={rectSwappingStrategy}
+          >
+            {/* <Droppable id={gridItem.gridId} key={index} className="w-full h-full"> */}
+            {addedContent.map((component, index) => (
+              <div
+                key={component.id}
+                className="z-5 absolute"
+                style={{
+                  transform: `translate3d(${component.position.x}px, ${component.position.y}px, 0)`,
+                }}
+                // style={{
+                //   transform: `translate3d(${
+                //     (component.position.x / 100) * screenSize?.width
+                //   }px, ${(component.position.y / 100) * screenSize?.height}px, 0)`,
+                // }}
+                // style={{
+                //   transform: `translate3d(${
+                //     isOverlapping(
+                //       addedContent[index] !== component[index]
+                //         ? addedContent[index]
+                //         : null,
+                //       component
+                //     )
+                //       ? addedContent[index].position.x - component.position?.x
+                //       : screenSize.width * 0.75
+                //   }px, ${
+                //     isOverlapping(addedContent[index], component)
+                //       ? addedContent[index].position.y - component.position?.y
+                //       : screenSize.height * 0.75
+                //   }px, 0)`,
+                // style={{
+                //   transform: `translate3d(${
+                //     component.position?.x > screenSize.width * 0.75
+                //       ? screenSize.width * 0.75
+                //       : component.position.x
+                //   }px, ${
+                //     component.position?.y > screenSize.height * 0.75
+                //       ? screenSize.height * 0.75
+                //       : component.position.y
+                //   }px, 0)`,
+                //   transition: {
+                //     duration: 350,
+                //     easing: "cubic-bezier(0.25, 1, 0.5, 1)",
+                //   },
+                // }}
+                ref={draggableRef}
+              >
+                {component.dnd === "Droppable" ? (
+                  <>
+                    {/* <PositionButtons handlePositionChange={handlePositionChange} /> */}
+                    <Droppable id={component.id} className="z-40">
+                      <DynamicElement
+                        element={component}
+                        handleInputChange={handleInputChange}
+                        previewMode={previewMode}
+                        input={component.input}
+                        childElements={addedContent
+                          .filter(
+                            (items) => items.id === component.id && items.gridId !== null
+                          )
+                          .flatMap((item) => item.otherElements || [])}
+                        ref={component.tag === "nav bar" ? navBarSizeRef : null}
+                      />
+                    </Droppable>
+                  </>
+                ) : (
+                  <>
+                    {/* <PositionButtons handlePositionChange={handlePositionChange} /> */}
+                    <Sortable
                       id={component.id}
-                      element={component}
-                      gridId={component.gridId}
-                      handleInputChange={handleInputChange}
-                      previewMode={previewMode}
-                      input={component.input}
-                    />
-                    <p>x: {component.position.x}</p>
-                    <p>y: {component.position.y}</p>
-                  </Draggable>
-                </>
-              )}
-            </div>
-          ))}
-          <DragOverlay>
+                      key={component.id}
+                      position={component.position}
+                      screenSize={screenSize}
+                      className="z-40 absolute"
+                    >
+                      <DynamicElement
+                        tag={component.tag}
+                        id={component.id}
+                        element={component}
+                        gridId={component.gridId}
+                        handleInputChange={handleInputChange}
+                        previewMode={previewMode}
+                        input={component.input}
+                      />
+                      <p>x: {component.position.x}</p>
+                      <p>y: {component.position.y}</p>
+                      <p>id: {component.id}</p>
+                    </Sortable>
+                  </>
+                )}
+              </div>
+            ))}
+          </SortableContext>
+          <DragOverlay
+            className="outline outline-green-300 outline-offset-4"
+            dropAnimation={{
+              duration: 300,
+              // easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)",
+            }}
+          >
             {addedContent
               .filter((item) => item?.id === draggingComponentId)
               .map((item) => (
-                <DynamicElement
-                  key={item.id}
-                  tag={item.tag}
-                  id={item.id}
-                  element={item}
-                  gridId={item.gridId}
-                  handleInputChange={handleInputChange}
-                  previewMode={previewMode}
-                  input={item.input}
-                />
+                <div key={item.id}>
+                  <DynamicElement
+                    key={item.id}
+                    tag={item.tag}
+                    id={item.id}
+                    element={item}
+                    gridId={item.gridId}
+                    handleInputChange={handleInputChange}
+                    previewMode={previewMode}
+                    input={item.input}
+                  />
+                </div>
               ))}
           </DragOverlay>
 

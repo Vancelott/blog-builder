@@ -26,7 +26,8 @@ export function DraggableDroppable(props: PropsWithChildren<IDraggableDroppable>
   };
 
   const style = {
-    color: isOver ? "green" : undefined,
+    backgroundColor: isOver ? "green" : undefined,
+    width: 100,
   };
 
   return (
