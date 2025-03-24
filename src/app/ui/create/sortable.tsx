@@ -10,15 +10,17 @@ interface ISortable {
 export function Sortable(props: PropsWithChildren<ISortable>) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: props.id,
+    transition: {
+      duration: 150,
+      easing: "linear",
+    },
     animateLayoutChanges: () => false,
   });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    // changed from Transform to Translate due to an issue with the scale of the components
+    transform: CSS.Translate.toString(transform),
     transition,
-    // transform: CSS.Transform.toString(
-    //   transform && `translate3d(${props.position.x}px, ${props.position.y}px, 0)`
-    // ),
   };
 
   return (

@@ -81,8 +81,12 @@ export default function Page() {
   const [navBarSize, setNavBarSize] = useState(null);
   const [posState, setPosState] = useState("");
   const [screenSize, setScreenSize] = useState({
-    width: window.innerWidth,
-    height: window.innerHeight,
+    width: window?.innerWidth,
+    height: window?.innerHeight,
+    initialWidth: window?.innerWidth,
+    initialHeight: window?.innerHeight,
+    deltaX: 0,
+    deltaY: 0,
   });
 
   const navBarSizeRef = useRef(null);
@@ -126,14 +130,18 @@ export default function Page() {
   useEffect(() => {
     const handleResize = () => {
       setScreenSize({
+        ...screenSize,
         width: window.innerWidth,
         height: window.innerHeight,
+        deltaX: window.innerWidth - screenSize.initialWidth,
+        deltaY: window.innerHeight - screenSize.initialHeight,
       });
     };
 
+    console.log("screenSize", screenSize);
+
     window.addEventListener("resize", handleResize);
 
-    // Clean up the event listener when the component unmounts
     return () => {
       window.removeEventListener("resize", handleResize);
     };
@@ -211,9 +219,6 @@ export default function Page() {
     const newStatus = over.id as string | number;
     const draggedComponent = addedContent.find((item) => item.id === elementId);
 
-    // const parentCenterX = (over.rect.width + over.rect.left) / 2;
-    // const parentCenterY = (over.rect.height + over.rect.top) / 2;
-
     if (
       // // kind of works, but not at 100% (dropping on the right edge doesn't work properly)
       // delta.x + draggedComponent.position.x > over.rect.width * 0.95 ||
@@ -227,7 +232,7 @@ export default function Page() {
       console.log("Outside of parent element");
       return;
     }
-    // TODO should the user be allowed to place elements outside of the window's width/height?
+    // TODO should the user be allowed to place components just outside of the window's width/height?
     if (
       delta.x + draggedComponent.position.x < 0 ||
       delta.y + draggedComponent.position.y < 0
@@ -261,7 +266,6 @@ export default function Page() {
         return prevAddedContent.map((component) => {
           if (component.id === elementId) {
             if (isNaN(newStatus)) {
-              console.log("");
               return {
                 ...component,
                 gridId: newStatus,
@@ -269,19 +273,23 @@ export default function Page() {
                 position: {
                   x: component.position.x + delta.x,
                   y: component.position.y + delta.y,
-                  // x: ((component.position.x + delta.x) / screenSize.width) * 100,
-                  // y: ((component.position.y + delta.y) / screenSize.height) * 100,
+                  // x:
+                  //   (((component.position.x / 100) * screenSize.width + delta.x) /
+                  //     screenSize.width) *
+                  //   100,
+                  // y:
+                  //   (((component.position.y / 100) * screenSize.height + delta.y) /
+                  //     screenSize.height) *
+                  //   100,
                 },
               };
             } else {
               return {
                 ...component,
                 gridId: newStatus,
-                // parentId: newStatus,
+                parentId: newStatus,
                 isDropped: true,
                 position: {
-                  // x: delta.x + component.position.x,
-                  // y: delta.y + component.position.y,
                   x: component.position.x + delta.x,
                   y: component.position.y + delta.y,
                 },
@@ -289,15 +297,14 @@ export default function Page() {
             }
           }
 
-          // if (component.id === newStatus) {
-          //   const updatedElement = prevAddedContent.find((item) => item.id === elementId);
-          //   return {
-          //     ...component,
-          //     otherElements: [...component.otherElements, updatedElement],
-          //   };
-          // }
+          if (component.id === newStatus) {
+            const updatedElement = prevAddedContent.find((item) => item.id === elementId);
+            return {
+              ...component,
+              otherElements: [...component.otherElements, updatedElement],
+            };
+          }
 
-          // return arrayMove(component, elementId, newStatus);
           return component;
         });
       });
@@ -322,32 +329,6 @@ export default function Page() {
   const gridSize = 20; // pixels
   const snapToGridModifier = createSnapModifier(gridSize);
 
-  const isOverlapping = (comp1, comp2) => {
-    if (!comp1) {
-      return false;
-    }
-
-    if (comp1.position.x > comp2.position.x || comp1.position.y > comp2.position.y) {
-      // setAddedContent((prevAddedContent) => {
-      //   return prevAddedContent.map((component) => {
-      //     if (component.id === comp2.id) {
-      //       return {
-      //         ...component,
-      //         position: {
-      //           x: comp1.position.x - 150,
-      //           y: comp1.position.y - 150,
-      //         },
-      //       };
-      //     }
-      //     return component;
-      //   });
-      // });
-      return true;
-    } else {
-      return false;
-    }
-  };
-
   return (
     <div className="flex flex-col h-screen w-full relative flex-wrap overflow-hidden">
       <DndContext
@@ -366,7 +347,6 @@ export default function Page() {
         {/* TODO add the dynamic style from the navbar */}
         <Droppable
           id={"mainGrid"}
-          // className="flex h-screen w-full absolute z-20"
           className="flex flex-row gap-32 min-w-0 h-screen w-full z-20 absolute"
           // style={navBarSize}
         >
@@ -379,29 +359,26 @@ export default function Page() {
               <div
                 key={component.id}
                 className="z-5 absolute"
+                // ORIGINAL
+                // style={{
+                //   transform: `translate3d(${component.position.x}px, ${component.position.y}px, 0)`,
+                // }}
                 style={{
-                  transform: `translate3d(${component.position.x}px, ${component.position.y}px, 0)`,
+                  transform: `translate3d(${
+                    component.position.x + screenSize.deltaX < 0
+                      ? 0
+                      : component.position.x + screenSize.deltaX
+                  }px, ${
+                    component.position.xy + screenSize.deltaY < 0
+                      ? 0
+                      : component.position.y + screenSize.deltaY
+                  }px, 0)`,
                 }}
                 // style={{
                 //   transform: `translate3d(${
                 //     (component.position.x / 100) * screenSize?.width
                 //   }px, ${(component.position.y / 100) * screenSize?.height}px, 0)`,
                 // }}
-                // style={{
-                //   transform: `translate3d(${
-                //     isOverlapping(
-                //       addedContent[index] !== component[index]
-                //         ? addedContent[index]
-                //         : null,
-                //       component
-                //     )
-                //       ? addedContent[index].position.x - component.position?.x
-                //       : screenSize.width * 0.75
-                //   }px, ${
-                //     isOverlapping(addedContent[index], component)
-                //       ? addedContent[index].position.y - component.position?.y
-                //       : screenSize.height * 0.75
-                //   }px, 0)`,
                 // style={{
                 //   transform: `translate3d(${
                 //     component.position?.x > screenSize.width * 0.75
@@ -422,7 +399,7 @@ export default function Page() {
                 {component.dnd === "Droppable" ? (
                   <>
                     {/* <PositionButtons handlePositionChange={handlePositionChange} /> */}
-                    <Droppable id={component.id} className="z-40">
+                    <Droppable id={component.id} className="z-50 absolute w-80 h-screen">
                       <DynamicElement
                         element={component}
                         handleInputChange={handleInputChange}
@@ -445,7 +422,7 @@ export default function Page() {
                       key={component.id}
                       position={component.position}
                       screenSize={screenSize}
-                      className="z-40 absolute"
+                      className="flex z-40 absolute"
                     >
                       <DynamicElement
                         tag={component.tag}
