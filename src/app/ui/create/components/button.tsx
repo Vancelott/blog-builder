@@ -9,6 +9,7 @@ interface IButton {
 
 export function Button(props: PropsWithChildren<IButton>) {
   const { addClassName, input, onClick } = props;
+
   return (
     <button
       className={`${

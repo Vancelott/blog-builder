@@ -5,6 +5,7 @@ import { TextArea } from "@/app/ui/create/components/textArea";
 import { UserNavBar } from "@/app/ui/create/components/userNavBar";
 import { PropsWithChildren } from "react";
 import { PositionButtons } from "@/app/ui/create/components/positionButtons";
+import { Draggable } from "@/app/ui/create/draggable";
 
 interface IDynamicElement {
   element: any;
@@ -13,8 +14,9 @@ interface IDynamicElement {
   isDropped: boolean;
   childElements: Array;
   input: any;
-  position: string;
+  positionStyle: string;
   ref: any;
+  handlePositionChange: any;
 }
 
 export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
@@ -133,31 +135,39 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
 
   if (props.element.tag == "nav bar") {
     return (
-      <UserNavBar style={props.positionChange} position={props.position} ref={props.ref}>
+      <UserNavBar
+        style={props.positionChange}
+        positionStyle={props.positionStyle}
+        ref={props.ref}
+      >
+        <div className="z-20 mt-8">
+          <PositionButtons handlePositionChange={props.handlePositionChange} />
+        </div>
         {props.childElements &&
           props.childElements.map((element, index) => (
             <div key={index}>
               {Components.map((mappedComponent, componentsIndex) => {
-                if (mappedComponent.tag == props.element.tag) {
+                console.log("props.childElements", props.childElements);
+                if (mappedComponent.tag == element.tag) {
                   const Component = mappedComponent.component || "div";
                   return (
-                    <Component key={componentsIndex}>
-                      {element.otherElements?.map((item, index) => {
-                        if (mappedComponent.tag == item.tag) {
-                          const MappedElement = mappedComponent.component || null;
-                          return <MappedElement key={item.id} />;
-                        }
-                      })}
-                    </Component>
+                    <Draggable key={componentsIndex} id={element.id}>
+                      <Component key={componentsIndex}>
+                        {element.otherElements?.map((item, index) => {
+                          if (mappedComponent.tag == item.tag) {
+                            const MappedElement = mappedComponent.component || null;
+                            console.log("MappedElement", MappedElement);
+                            return <MappedElement key={item.id} />;
+                          }
+                        })}
+                      </Component>
+                    </Draggable>
                   );
                 }
               })}
             </div>
           ))}
-        {props.children}
-        <div className="z-20 mt-8">
-          <PositionButtons />
-        </div>
+        {/* {props.children} */}
       </UserNavBar>
     );
   }

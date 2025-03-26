@@ -14,13 +14,12 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { createSnapModifier, restrictToParentElement } from "@dnd-kit/modifiers";
+import { createSnapModifier } from "@dnd-kit/modifiers";
 import { Draggable } from "@/app/ui/create/draggable";
 import { Droppable } from "@/app/ui/create/droppable";
 import { Sortable } from "@/app/ui/create/sortable";
-import { DraggableDroppable } from "@/app/ui/create/draggableDroppable";
-import { PositionButtons } from "@/app/ui/create/components/positionButtons";
-import { useRef, useCallback, useEffect } from "react";
+// import { DraggableDroppable } from "@/app/ui/create/draggableDroppable";
+import { useRef, useEffect } from "react";
 import {
   SortableContext,
   rectSwappingStrategy,
@@ -78,7 +77,7 @@ export default function Page() {
   const [draggingComponentId, setDraggingComponentId] = useState(0);
   const [showGrid, setShowGrid] = useState(false);
   const [positionStyle, setPositionStyle] = useState("");
-  const [navBarSize, setNavBarSize] = useState(null);
+  const [navBarSize, setNavBarSize] = useState({});
   const [posState, setPosState] = useState("");
   const [screenSize, setScreenSize] = useState({
     width: window?.innerWidth,
@@ -91,7 +90,6 @@ export default function Page() {
 
   const navBarSizeRef = useRef(null);
   const draggableRef = useRef(null);
-  const windowRef = useRef(window);
 
   const mouseSensor = useSensor(MouseSensor, {
     // Require the mouse to move by 10 pixels before activating
@@ -115,17 +113,18 @@ export default function Page() {
 
   useEffect(() => {
     if (posState == "Right") {
-      setNavBarSize({ marginRight: navBarSizeRef.current.offsetWidth + "px" });
+      setNavBarSize({ marginRight: navBarSizeRef.current.offsetWidth + "px", right: 0 });
     } else if (posState == "Bottom") {
       setNavBarSize({
         marginBottom: navBarSizeRef.current.offsetHeight + "px",
+        bottom: 0,
       });
     } else if (posState == "Top") {
       setNavBarSize({ marginTop: navBarSizeRef.current.offsetHeight + "px" });
     } else if (posState == "Left") {
       setNavBarSize({ marginLeft: navBarSizeRef.current.offsetWidth + "px" });
     }
-  }, [navBarSizeRef, posState]);
+  }, [posState]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -175,6 +174,10 @@ export default function Page() {
     });
     setAddedContent((prevContent) => [...prevContent, elementToBeAdded]);
 
+    if (elementToBeAdded.tag === "nav bar") {
+      handlePositionChange("Left"); // default value
+    }
+
     console.log(addedContent);
     setShowSelect(false);
   };
@@ -219,47 +222,74 @@ export default function Page() {
     const newStatus = over.id as string | number;
     const draggedComponent = addedContent.find((item) => item.id === elementId);
 
-    if (
-      // // kind of works, but not at 100% (dropping on the right edge doesn't work properly)
-      // delta.x + draggedComponent.position.x > over.rect.width * 0.95 ||
-      // delta.y + draggedComponent.position.y > over.rect.height * 0.9
-      delta.x + draggedComponent.position.x + draggableRef.current.offsetWidth >
-        over.rect.width ||
-      delta.y + draggedComponent.position.y + draggableRef.current.offsetHeight >
-        over.rect.height
-    ) {
-      // TODO instead of returning, should the component be placed at the max value of whichever axis overflowed?
-      console.log("Outside of parent element");
-      return;
-    }
-    // TODO should the user be allowed to place components just outside of the window's width/height?
-    if (
-      delta.x + draggedComponent.position.x < 0 ||
-      delta.y + draggedComponent.position.y < 0
-    ) {
-      return;
-    }
+    // const navBarWidth =
+    //   navBarSizeRef?.current?.offsetWidth > navBarSizeRef?.current?.offsetHeight
+    //     ? navBarSizeRef?.current?.offsetWidth
+    //     : 0;
+    // const navBarHeight =
+    //   navBarSizeRef?.current?.offsetHeight > navBarSizeRef?.current?.offsetWidth
+    //     ? navBarSizeRef?.current?.offsetHeight
+    //     : 0;
+
+    // if (
+    //   elementId === newStatus &&
+    //   (delta.x +
+    //     draggedComponent.position.x +
+    //     draggableRef.current.offsetWidth * 0.98 +
+    //     navBarWidth >
+    //     window.innerWidth ||
+    //     delta.y +
+    //       draggedComponent.position.y +
+    //       draggableRef.current.offsetHeight * 0.98 +
+    //       navBarHeight >
+    //       window.innerHeight)
+    // ) {
+    //   console.log("Outside of parent element");
+    //   return;
+    // }
+
+    // if (
+    //   elementId !== newStatus &&
+    //   // // kind of works, but not at 100% (dropping on the right edge doesn't work properly)
+    //   // delta.x + draggedComponent.position.x > over.rect.width * 0.95 ||
+    //   // delta.y + draggedComponent.position.y > over.rect.height * 0.9
+    //   (delta.x + draggedComponent.position.x + draggableRef.current.offsetWidth * 0.98 >
+    //     over.rect.width ||
+    //     delta.y + draggedComponent.position.y + draggableRef.current.offsetHeight * 0.98 >
+    //       over.rect.height)
+    // ) {
+    //   // TODO instead of returning, should the component be placed at the max value of whichever axis overflowed?
+    //   console.log("Outside of parent element");
+    //   return;
+    // }
+
+    // // TODO should the user be allowed to place components just outside of the window's width/height?
+    // if (
+    //   (newStatus === undefined && delta.x + draggedComponent.position.x < 0) ||
+    //   delta.y + draggedComponent.position.y < 0
+    // ) {
+    //   return;
+    // }
 
     // handles the swapping of components (if elementId == newStatus, it just means the component has been moved, and not swapped)
-    if (collisions.length > 1 && elementId !== newStatus) {
-      const item1 = addedContent.find((item) => item.id === active.id);
-      const item2 = addedContent.find((item) => item.id === over.id);
+    if (collisions.length >= 2 && elementId !== newStatus && !isNaN(newStatus)) {
+      const swappedComponent = addedContent.find((item) => item.id === over.id);
 
       setAddedContent((prevAddedContent) => {
         return prevAddedContent.map((component) => {
-          if (component.id === item1.id) {
+          if (component.id === draggedComponent.id) {
             return {
               ...component,
-              position: item2.position,
+              position: swappedComponent.position,
             };
-          } else if (component.id === item2.id) {
+          } else if (component.id === swappedComponent.id) {
             return {
               ...component,
-              position: item1.position,
+              position: draggedComponent.position,
             };
           }
         });
-        return arraySwap(component, item1.id, item2.id);
+        return arraySwap(component, draggedComponent.id, swappedComponent.id);
       });
     } else {
       setAddedContent((prevAddedContent) => {
@@ -269,6 +299,7 @@ export default function Page() {
               return {
                 ...component,
                 gridId: newStatus,
+                parentId: null,
                 isDropped: true,
                 position: {
                   x: component.position.x + delta.x,
@@ -286,7 +317,7 @@ export default function Page() {
             } else {
               return {
                 ...component,
-                gridId: newStatus,
+                gridId: null,
                 parentId: newStatus,
                 isDropped: true,
                 position: {
@@ -305,6 +336,8 @@ export default function Page() {
             };
           }
 
+          console.log("component", component);
+          console.log("addedContent", addedContent);
           return component;
         });
       });
@@ -330,7 +363,9 @@ export default function Page() {
   const snapToGridModifier = createSnapModifier(gridSize);
 
   return (
-    <div className="flex flex-col h-screen w-full relative flex-wrap overflow-hidden">
+    // TODO remove flex-col?
+    // <div className="flex h-screen w-full relative overflow-hidden">-
+    <div className="flex flex-col h-screen w-full relative overflow-hidden">
       <DndContext
         onDragEnd={handleDragEnd}
         onDragStart={handleDragStart}
@@ -340,135 +375,133 @@ export default function Page() {
       >
         {showGrid && (
           <div
-            style={{ navBarSize }}
+            style={navBarSize}
             className={`grid grid-cols-[repeat(auto-fill,minmax(20px,20px))] grid-rows-[repeat(auto-fill,minmax(20px,20px))] absolute w-full h-screen bg-[linear-gradient(to_right,#306f7a_1px,transparent_1px),linear-gradient(to_bottom,#306f7a_1px,transparent_1px)] bg-[size:20px_20px]`}
           ></div>
         )}
-        {/* TODO add the dynamic style from the navbar */}
-        <Droppable
-          id={"mainGrid"}
-          className="flex flex-row gap-32 min-w-0 h-screen w-full z-20 absolute"
-          // style={navBarSize}
+        {/* <div className={`h-screen w-[${navBarSizeRef?.current?.offsetWidth}px]`}> */}
+        {/* PARENT COMPONENTS */}
+        <div
+          // style={{
+          //   height: "100%",
+          //   minWidth: "fit-content",
+          //   maxWidth: "320px",
+          //   width: "100%",
+          // }}
+          // className={`h-screen w-full max-w-[320px]`}
+          className="flex flex-col w-full h-screen absolute justify-center"
         >
-          <SortableContext
-            items={addedContent.map((component) => component)}
-            strategy={rectSwappingStrategy}
-          >
-            {/* <Droppable id={gridItem.gridId} key={index} className="w-full h-full"> */}
-            {addedContent.map((component, index) => (
-              <div
+          {addedContent
+            .filter((component) => component.dnd === "Droppable")
+            .map((component) => (
+              <Droppable
+                id={component.id}
+                className="z-20 w-full h-full"
                 key={component.id}
-                className="z-5 absolute"
-                // ORIGINAL
-                // style={{
-                //   transform: `translate3d(${component.position.x}px, ${component.position.y}px, 0)`,
-                // }}
-                style={{
-                  transform: `translate3d(${
-                    component.position.x + screenSize.deltaX < 0
-                      ? 0
-                      : component.position.x + screenSize.deltaX
-                  }px, ${
-                    component.position.xy + screenSize.deltaY < 0
-                      ? 0
-                      : component.position.y + screenSize.deltaY
-                  }px, 0)`,
-                }}
-                // style={{
-                //   transform: `translate3d(${
-                //     (component.position.x / 100) * screenSize?.width
-                //   }px, ${(component.position.y / 100) * screenSize?.height}px, 0)`,
-                // }}
-                // style={{
-                //   transform: `translate3d(${
-                //     component.position?.x > screenSize.width * 0.75
-                //       ? screenSize.width * 0.75
-                //       : component.position.x
-                //   }px, ${
-                //     component.position?.y > screenSize.height * 0.75
-                //       ? screenSize.height * 0.75
-                //       : component.position.y
-                //   }px, 0)`,
-                //   transition: {
-                //     duration: 350,
-                //     easing: "cubic-bezier(0.25, 1, 0.5, 1)",
-                //   },
-                // }}
-                ref={draggableRef}
               >
-                {component.dnd === "Droppable" ? (
-                  <>
-                    {/* <PositionButtons handlePositionChange={handlePositionChange} /> */}
-                    <Droppable id={component.id} className="z-50 absolute w-80 h-screen">
-                      <DynamicElement
-                        element={component}
-                        handleInputChange={handleInputChange}
-                        previewMode={previewMode}
-                        input={component.input}
-                        childElements={addedContent
-                          .filter(
-                            (items) => items.id === component.id && items.gridId !== null
-                          )
-                          .flatMap((item) => item.otherElements || [])}
-                        ref={component.tag === "nav bar" ? navBarSizeRef : null}
-                      />
-                    </Droppable>
-                  </>
-                ) : (
-                  <>
-                    {/* <PositionButtons handlePositionChange={handlePositionChange} /> */}
-                    <Sortable
-                      id={component.id}
-                      key={component.id}
-                      position={component.position}
-                      screenSize={screenSize}
-                      className="flex z-40 absolute"
-                    >
-                      <DynamicElement
-                        tag={component.tag}
-                        id={component.id}
-                        element={component}
-                        gridId={component.gridId}
-                        handleInputChange={handleInputChange}
-                        previewMode={previewMode}
-                        input={component.input}
-                      />
-                      <p>x: {component.position.x}</p>
-                      <p>y: {component.position.y}</p>
-                      <p>id: {component.id}</p>
-                    </Sortable>
-                  </>
-                )}
-              </div>
+                <DynamicElement
+                  element={component}
+                  handleInputChange={handleInputChange}
+                  handlePositionChange={handlePositionChange}
+                  previewMode={previewMode}
+                  input={component.input}
+                  childElements={addedContent.filter(
+                    (items) => items.parentId === component.id
+                  )}
+                  ref={component.tag === "nav bar" ? navBarSizeRef : null}
+                  positionStyle={component.tag === "nav bar" ? positionStyle : null}
+                />
+              </Droppable>
             ))}
-          </SortableContext>
-          <DragOverlay
-            className="outline outline-green-300 outline-offset-4"
-            dropAnimation={{
-              duration: 300,
-              // easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)",
-            }}
+        </div>
+        {/* NON-PARENT COMPONENTS */}
+        <div className="h-screen w-full">
+          {/* TODO add the dynamic style from the navbar */}
+          <Droppable
+            id={"mainGrid"}
+            className="gap-32 h-screen w-full z-20 absolute"
+            style={navBarSize}
           >
-            {addedContent
-              .filter((item) => item?.id === draggingComponentId)
-              .map((item) => (
-                <div key={item.id}>
-                  <DynamicElement
-                    key={item.id}
-                    tag={item.tag}
-                    id={item.id}
-                    element={item}
-                    gridId={item.gridId}
-                    handleInputChange={handleInputChange}
-                    previewMode={previewMode}
-                    input={item.input}
-                  />
-                </div>
-              ))}
-          </DragOverlay>
-
-          {/* ))} */}
-        </Droppable>
+            <SortableContext
+              items={addedContent
+                .filter((component) => component.parentId === null)
+                .map((component) => component)}
+              strategy={rectSwappingStrategy}
+            >
+              {/* <Droppable id={gridItem.gridId} key={index} className="w-full h-full"> */}
+              {addedContent
+                .filter((component) => component.parentId === null)
+                .map((component) => (
+                  <div
+                    key={component.id}
+                    className="z-5 absolute"
+                    style={{
+                      transform: `translate3d(${
+                        component.position.x + screenSize.deltaX < 0
+                          ? 0
+                          : component.position.x + screenSize.deltaX
+                      }px, ${
+                        component.position.y + screenSize.deltaY < 0
+                          ? 0
+                          : component.position.y + screenSize.deltaY
+                      }px, 0)`,
+                    }}
+                    ref={draggableRef}
+                  >
+                    {component.dnd !== "Droppable" ? (
+                      <>
+                        {/* <PositionButtons handlePositionChange={handlePositionChange} /> */}
+                        <Sortable
+                          id={component.id}
+                          key={component.id}
+                          position={component.position}
+                          screenSize={screenSize}
+                          className="flex z-40 absolute"
+                        >
+                          <DynamicElement
+                            tag={component.tag}
+                            id={component.id}
+                            element={component}
+                            gridId={component.gridId}
+                            handleInputChange={handleInputChange}
+                            previewMode={previewMode}
+                            input={component.input}
+                          />
+                          <p>x: {component.position.x}</p>
+                          <p>y: {component.position.y}</p>
+                          <p>id: {component.id}</p>
+                        </Sortable>
+                      </>
+                    ) : null}
+                  </div>
+                ))}
+            </SortableContext>
+            <DragOverlay
+              className="outline outline-green-300 outline-offset-4"
+              dropAnimation={{
+                duration: 300,
+                // easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)",
+              }}
+            >
+              {addedContent
+                .filter((item) => item?.id === draggingComponentId)
+                .map((item) => (
+                  <div key={item.id}>
+                    <DynamicElement
+                      key={item.id}
+                      tag={item.tag}
+                      id={item.id}
+                      element={item}
+                      gridId={item.gridId}
+                      handleInputChange={handleInputChange}
+                      previewMode={previewMode}
+                      input={item.input}
+                    />
+                  </div>
+                ))}
+            </DragOverlay>
+          </Droppable>
+        </div>
         <div className="flex flex-col gap-4 w-full h-screen place-items-center justify-end pt-36 pb-4 relative">
           <div className="flex flex-col items-center gap-4">
             <button
@@ -524,52 +557,6 @@ export default function Page() {
             )}
           </div>
         </div>
-        {/* TODO delete? */}
-        {/* <div className="flex flex-col w-full h-screen justify-center absolute">
-          {addedContent.map((item, index) => (
-            <div
-              // key={index}
-              key={item.id}
-            >
-              {showDelete && (
-                <button
-                  onClick={() => handleDelete(item)}
-                  className="px-2 py-1 bg-red-800 text-white"
-                >
-                  X
-                </button>
-              )}
-              {item.dnd == "Draggable" ? (
-                <Draggable id={item.id}>
-                  <DynamicElement
-                    tag={item.tag}
-                    previewMode={previewMode}
-                    isDropped={item.isDropped}
-                  />
-                </Draggable>
-              ) : item.gridId === null ? (
-                <Droppable id={item.id}>
-                  <DynamicElement
-                    ref={navBarSizeRef}
-                    key={item.id}
-                    tag={item.tag}
-                    style={positionStyle}
-                    previewMode={previewMode}
-                    isDropped={isDropped}
-                    position={positionStyle}
-                    childElements={addedContent.filter(
-                      (items) => items.parentId === item.id
-                    )}
-                  >
-                    <div className="z-20 mt-8">
-                      <PositionButtons handlePositionChange={handlePositionChange} />
-                    </div>
-                  </DynamicElement>
-                </Droppable>
-              ) : null}
-            </div>
-          ))}
-        </div> */}
       </DndContext>
     </div>
   );
