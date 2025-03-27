@@ -18,7 +18,6 @@ import { createSnapModifier } from "@dnd-kit/modifiers";
 import { Draggable } from "@/app/ui/create/draggable";
 import { Droppable } from "@/app/ui/create/droppable";
 import { Sortable } from "@/app/ui/create/sortable";
-// import { DraggableDroppable } from "@/app/ui/create/draggableDroppable";
 import { useRef, useEffect } from "react";
 import {
   SortableContext,
@@ -27,58 +26,19 @@ import {
   arrayMove,
   arraySwap,
 } from "@dnd-kit/sortable";
-
-const styles: Array = [
-  {
-    type: "basic",
-    tag: "textarea",
-    className: "bg-red-400",
-  },
-];
-
-const elements: Array<IElement> = [
-  {
-    id: 0,
-    componentId: 0,
-    tag: "textarea",
-    style: "basic",
-    input: "",
-    placeholder: "Text Area",
-    dnd: "Draggable",
-    isDropped: false,
-    parentId: null,
-    gridId: null,
-    position: { x: 0, y: 0 },
-  },
-  {
-    id: 0,
-    componentId: 1,
-    tag: "nav bar",
-    style: "basic",
-    input: "",
-    placeholder: "Side Navigation Bar",
-    dnd: "Droppable",
-    otherElements: [],
-    isDropped: false,
-    parentId: null,
-    gridId: null,
-    position: { x: 0, y: 0 },
-  },
-];
+import { elements, styles } from "@/app/utils/constants";
 
 export default function Page() {
-  // TODO add default content / create a new state variable for the default content
+  // TODO add default content / create a new state variable for the default content (if you think there should be such)
   const [addedContent, setAddedContent] = useState<IElement[]>([]);
   const [showSelect, setShowSelect] = useState<boolean>(false);
   const [showDelete, setShowDelete] = useState<boolean>(false);
   const [previewMode, setPreviewMode] = useState<boolean>(false);
-  const [isDropped, setIsDropped] = useState(false);
-  const [activeId, setActiveId] = useState(null);
-  const [draggingComponentId, setDraggingComponentId] = useState(0);
-  const [showGrid, setShowGrid] = useState(false);
-  const [positionStyle, setPositionStyle] = useState("");
+  const [draggingComponentId, setDraggingComponentId] = useState<number>(null);
+  const [showGrid, setShowGrid] = useState<boolean>(false);
+  const [positionStyle, setPositionStyle] = useState<string>("");
   const [navBarSize, setNavBarSize] = useState({});
-  const [posState, setPosState] = useState("");
+  const [posState, setPosState] = useState<string>("");
   const [screenSize, setScreenSize] = useState({
     width: window?.innerWidth,
     height: window?.innerHeight,
@@ -88,11 +48,11 @@ export default function Page() {
     deltaY: 0,
   });
 
-  const navBarSizeRef = useRef(null);
-  const draggableRef = useRef(null);
+  const navBarSizeRef = useRef<HTMLDivElement>(null);
+  const draggableRef = useRef<HTMLDivElement>(null);
 
   const mouseSensor = useSensor(MouseSensor, {
-    // Require the mouse to move by 10 pixels before activating
+    // Require the mouse to move by 5 pixels before activating
     activationConstraint: {
       distance: 5,
     },
@@ -104,15 +64,17 @@ export default function Page() {
       tolerance: 5,
     },
   });
-
   const sensors = useSensors(
     mouseSensor,
     touchSensor
     // keyboardSensor
   );
+  const gridSize = 20; // pixels
+  const snapToGridModifier = createSnapModifier(gridSize);
 
   useEffect(() => {
     if (posState == "Right") {
+      // setNavBarSize({ marginRight: navBarSizeRef.current.offsetWidth + "px", right: 0 });
       setNavBarSize({ marginRight: navBarSizeRef.current.offsetWidth + "px", right: 0 });
     } else if (posState == "Bottom") {
       setNavBarSize({
@@ -147,6 +109,10 @@ export default function Page() {
   }, [screenSize]);
 
   const handlePositionChange = (pos: string) => {
+    if (pos === posState) {
+      return;
+    }
+
     setNavBarSize(null);
     setPositionStyle(null);
     setPosState(pos);
@@ -207,6 +173,7 @@ export default function Page() {
   const handleDragCancel = () => {
     setDraggingParent(false);
     setActiveId(null);
+    setDraggingComponentId(null);
     return;
   };
 
@@ -222,61 +189,58 @@ export default function Page() {
     const newStatus = over.id as string | number;
     const draggedComponent = addedContent.find((item) => item.id === elementId);
 
-    // const navBarWidth =
-    //   navBarSizeRef?.current?.offsetWidth > navBarSizeRef?.current?.offsetHeight
-    //     ? navBarSizeRef?.current?.offsetWidth
-    //     : 0;
-    // const navBarHeight =
-    //   navBarSizeRef?.current?.offsetHeight > navBarSizeRef?.current?.offsetWidth
-    //     ? navBarSizeRef?.current?.offsetHeight
-    //     : 0;
+    const navBarWidth =
+      navBarSizeRef?.current?.offsetWidth < navBarSizeRef?.current?.offsetHeight
+        ? navBarSizeRef?.current?.offsetWidth
+        : 0;
+    const navBarHeight =
+      navBarSizeRef?.current?.offsetHeight < navBarSizeRef?.current?.offsetWidth
+        ? navBarSizeRef?.current?.offsetHeight
+        : 0;
 
-    // if (
-    //   elementId === newStatus &&
-    //   (delta.x +
-    //     draggedComponent.position.x +
-    //     draggableRef.current.offsetWidth * 0.98 +
-    //     navBarWidth >
-    //     window.innerWidth ||
-    //     delta.y +
-    //       draggedComponent.position.y +
-    //       draggableRef.current.offsetHeight * 0.98 +
-    //       navBarHeight >
-    //       window.innerHeight)
-    // ) {
-    //   console.log("Outside of parent element");
-    //   return;
-    // }
+    if (
+      elementId === newStatus &&
+      (delta.x +
+        draggedComponent.position.x +
+        draggableRef.current.offsetWidth * 0.98 +
+        navBarWidth >
+        window.innerWidth ||
+        delta.y +
+          draggedComponent.position.y +
+          draggableRef.current.offsetHeight * 0.98 +
+          navBarHeight >
+          window.innerHeight)
+    ) {
+      console.log("Outside of parent element");
+      return;
+    }
 
-    // if (
-    //   elementId !== newStatus &&
-    //   // // kind of works, but not at 100% (dropping on the right edge doesn't work properly)
-    //   // delta.x + draggedComponent.position.x > over.rect.width * 0.95 ||
-    //   // delta.y + draggedComponent.position.y > over.rect.height * 0.9
-    //   (delta.x + draggedComponent.position.x + draggableRef.current.offsetWidth * 0.98 >
-    //     over.rect.width ||
-    //     delta.y + draggedComponent.position.y + draggableRef.current.offsetHeight * 0.98 >
-    //       over.rect.height)
-    // ) {
-    //   // TODO instead of returning, should the component be placed at the max value of whichever axis overflowed?
-    //   console.log("Outside of parent element");
-    //   return;
-    // }
+    if (
+      elementId !== newStatus &&
+      (delta.x + draggedComponent.position.x + draggableRef.current.offsetWidth * 0.98 >
+        over.rect.width ||
+        delta.y + draggedComponent.position.y + draggableRef.current.offsetHeight * 0.98 >
+          over.rect.height)
+    ) {
+      // TODO instead of returning, should the component be placed at the max value of whichever axis overflowed?
+      console.log("Outside of parent element");
+      return;
+    }
 
-    // // TODO should the user be allowed to place components just outside of the window's width/height?
-    // if (
-    //   (newStatus === undefined && delta.x + draggedComponent.position.x < 0) ||
-    //   delta.y + draggedComponent.position.y < 0
-    // ) {
-    //   return;
-    // }
+    // TODO should the user be allowed to place components just outside of the window's width/height?
+    if (
+      (newStatus === undefined && delta.x + draggedComponent.position.x < 0) ||
+      delta.y + draggedComponent.position.y < 0
+    ) {
+      return;
+    }
 
     // handles the swapping of components (if elementId == newStatus, it just means the component has been moved, and not swapped)
     if (collisions.length >= 2 && elementId !== newStatus && !isNaN(newStatus)) {
       const swappedComponent = addedContent.find((item) => item.id === over.id);
 
       setAddedContent((prevAddedContent) => {
-        return prevAddedContent.map((component) => {
+        prevAddedContent.map((component) => {
           if (component.id === draggedComponent.id) {
             return {
               ...component,
@@ -288,8 +252,8 @@ export default function Page() {
               position: draggedComponent.position,
             };
           }
+          return arraySwap(component, draggedComponent.id, swappedComponent.id);
         });
-        return arraySwap(component, draggedComponent.id, swappedComponent.id);
       });
     } else {
       setAddedContent((prevAddedContent) => {
@@ -304,21 +268,13 @@ export default function Page() {
                 position: {
                   x: component.position.x + delta.x,
                   y: component.position.y + delta.y,
-                  // x:
-                  //   (((component.position.x / 100) * screenSize.width + delta.x) /
-                  //     screenSize.width) *
-                  //   100,
-                  // y:
-                  //   (((component.position.y / 100) * screenSize.height + delta.y) /
-                  //     screenSize.height) *
-                  //   100,
                 },
               };
             } else {
               return {
                 ...component,
                 gridId: null,
-                parentId: newStatus,
+                parentId: component.id === newStatus ? null : newStatus,
                 isDropped: true,
                 position: {
                   x: component.position.x + delta.x,
@@ -336,14 +292,10 @@ export default function Page() {
             };
           }
 
-          console.log("component", component);
-          console.log("addedContent", addedContent);
           return component;
         });
       });
     }
-
-    setIsDropped(false);
   };
 
   const handleInputChange = (id: number, text: string) => {
@@ -358,9 +310,6 @@ export default function Page() {
       });
     });
   };
-
-  const gridSize = 20; // pixels
-  const snapToGridModifier = createSnapModifier(gridSize);
 
   return (
     // TODO remove flex-col?
@@ -419,13 +368,13 @@ export default function Page() {
           {/* TODO add the dynamic style from the navbar */}
           <Droppable
             id={"mainGrid"}
-            className="gap-32 h-screen w-full z-20 absolute"
+            className="gap-32 h-screen w-full z-40 fixed"
             style={navBarSize}
           >
             <SortableContext
               items={addedContent
                 .filter((component) => component.parentId === null)
-                .map((component) => component)}
+                .map((component) => component.id)}
               strategy={rectSwappingStrategy}
             >
               {/* <Droppable id={gridItem.gridId} key={index} className="w-full h-full"> */}
@@ -450,7 +399,6 @@ export default function Page() {
                   >
                     {component.dnd !== "Droppable" ? (
                       <>
-                        {/* <PositionButtons handlePositionChange={handlePositionChange} /> */}
                         <Sortable
                           id={component.id}
                           key={component.id}
@@ -502,7 +450,7 @@ export default function Page() {
             </DragOverlay>
           </Droppable>
         </div>
-        <div className="flex flex-col gap-4 w-full h-screen place-items-center justify-end pt-36 pb-4 relative">
+        <div className="flex flex-col gap-4 w-full h-screen place-items-center justify-end pt-36 pb-4">
           <div className="flex flex-col items-center gap-4">
             <button
               // TODO make a handle function with a pop up if there are no added elements

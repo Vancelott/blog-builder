@@ -153,7 +153,7 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
                   return (
                     <Draggable key={componentsIndex} id={element.id}>
                       <Component key={componentsIndex}>
-                        {element.otherElements?.map((item, index) => {
+                        {element.otherElements?.map((item) => {
                           if (mappedComponent.tag == item.tag) {
                             const MappedElement = mappedComponent.component || null;
                             console.log("MappedElement", MappedElement);
