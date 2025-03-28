@@ -1,81 +1,63 @@
 "use client";
 
 import { useState } from "react";
-import { TextArea } from "@/app/ui/create/components/textArea";
-import { UserNavBar } from "@/app/ui/create/components/userNavBar";
 import { PropsWithChildren } from "react";
 import { PositionButtons } from "@/app/ui/create/components/positionButtons";
 import { Draggable } from "@/app/ui/create/draggable";
-
-interface IDynamicElement {
-  element: any;
-  className: string;
-  previewMode: boolean;
-  isDropped: boolean;
-  childElements: Array;
-  input: any;
-  positionStyle: string;
-  ref: any;
-  handlePositionChange: any;
-}
+import { IDynamicElement } from "@/app/types/index";
+import { TextArea } from "@/app/ui/create/components/textArea";
+import { Header } from "@/app/ui/create/components/header";
+import { UserNavBar } from "@/app/ui/create/components/userNavBar";
+import { ChildElements } from "@/app/ui/create/childElements";
+import { CreateComponents } from "@/app/utils/constants";
 
 export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
   const [textAreaInput, setTextAreaInput] = useState<string>("");
 
-  const Components = [
-    { tag: "textarea", component: TextArea },
-    { tag: "nav bar", component: UserNavBar },
-  ];
-
-  if (props.element.gridId && props.childElements?.length > 0) {
-    return (
-      <div>
-        <p className="text-2xl text-yellow-400">{positionChange}</p>
-        {Components.map((mappedComponent) => {
-          if (mappedComponent.tag === props.element.tag) {
-            const Component = mappedComponent.component || "div";
-            return (
-              <div key={props.element.id}>
-                <Component handleInputChange={props.handleInputChange}>
-                  {props.childElements &&
-                    props.childElements.map((item) => {
-                      const childComponentDef = Components.find(
-                        (component) => component.tag === item.tag
-                      );
-                      if (childComponentDef) {
-                        const ChildComponent = childComponentDef.component;
-                        return;
-                        <div>
-                          <ChildComponent
-                            handleInputChange={props.handleInputChange}
-                            key={item.id}
-                            // style={{
-                            //   left: `${props.element.position.left}px`,
-                            //   right: `${props.element.position.right}px`,
-                            // }}
-                          />
-                        </div>;
-                      }
-                      return null;
-                    })}
-                </Component>
-              </div>
-            );
-          }
-          return null;
-        })}
-      </div>
-    );
-  }
+  // if (props.element.gridId && props.childElements?.length > 0) {
+  //   return (
+  //     <div>
+  //       <p className="text-2xl text-yellow-400">{positionChange}</p>
+  //       {Components.map((mappedComponent) => {
+  //         if (mappedComponent.tag === props.element.tag) {
+  //           const Component = mappedComponent.component || "div";
+  //           return (
+  //             <div key={props.element.id}>
+  //               <Component handleInputChange={props.handleInputChange}>
+  //                 {props.childElements &&
+  //                   props.childElements.map((item) => {
+  //                     const childComponentDef = Components.find(
+  //                       (component) => component.tag === item.tag
+  //                     );
+  //                     if (childComponentDef) {
+  //                       const ChildComponent = childComponentDef.component;
+  //                       return;
+  //                       <div>
+  //                         <ChildComponent
+  //                           handleInputChange={props.handleInputChange}
+  //                           key={item.id}
+  //                           // style={{
+  //                           //   left: `${props.element.position.left}px`,
+  //                           //   right: `${props.element.position.right}px`,
+  //                           // }}
+  //                         />
+  //                       </div>;
+  //                     }
+  //                     return null;
+  //                   })}
+  //               </Component>
+  //             </div>
+  //           );
+  //         }
+  //         return null;
+  //       })}
+  //     </div>
+  //   );
+  // }
   if (props.element.gridId) {
     return (
-      <div
-        style={{
-          left: `${props.element.position.left}px`,
-          right: `${props.element.position.right}px`,
-        }}
-      >
-        {Components.map((mappedComponent) => {
+      <div>
+        {CreateComponents.map((mappedComponent) => {
           if (mappedComponent.tag === props.element.tag) {
             const Component = mappedComponent.component || "div";
             if (props.previewMode) {
@@ -90,10 +72,6 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
                   <Component
                     handleInputChange={props.handleInputChange}
                     id={props.element.id}
-                    // style={{
-                    //   left: `${props.element.position.left}px`,
-                    //   right: `${props.element.position.right}px`,
-                    // }}
                   />
                 </div>
               );
@@ -143,32 +121,17 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
         <div className="z-20 mt-8">
           <PositionButtons handlePositionChange={props.handlePositionChange} />
         </div>
-        {props.childElements &&
-          props.childElements.map((element, index) => (
-            <div key={index}>
-              {Components.map((mappedComponent, componentsIndex) => {
-                console.log("props.childElements", props.childElements);
-                if (mappedComponent.tag == element.tag) {
-                  const Component = mappedComponent.component || "div";
-                  return (
-                    <Draggable key={componentsIndex} id={element.id}>
-                      <Component key={componentsIndex}>
-                        {element.otherElements?.map((item) => {
-                          if (mappedComponent.tag == item.tag) {
-                            const MappedElement = mappedComponent.component || null;
-                            console.log("MappedElement", MappedElement);
-                            return <MappedElement key={item.id} />;
-                          }
-                        })}
-                      </Component>
-                    </Draggable>
-                  );
-                }
-              })}
-            </div>
-          ))}
-        {/* {props.children} */}
+        {props.childElements && props.element && (
+          <ChildElements
+            childElements={props.childElements}
+            draggableRef={props.draggableRef}
+          />
+        )}
       </UserNavBar>
     );
+  }
+
+  if (props.element.tag === "header") {
+    return <Header />;
   }
 }

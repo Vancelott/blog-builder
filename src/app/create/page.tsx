@@ -74,17 +74,25 @@ export default function Page() {
 
   useEffect(() => {
     if (posState == "Right") {
-      // setNavBarSize({ marginRight: navBarSizeRef.current.offsetWidth + "px", right: 0 });
-      setNavBarSize({ marginRight: navBarSizeRef.current.offsetWidth + "px", right: 0 });
+      setNavBarSize({
+        size: navBarSizeRef.current.offsetWidth,
+        marginDirection: "marginRight",
+      });
     } else if (posState == "Bottom") {
       setNavBarSize({
-        marginBottom: navBarSizeRef.current.offsetHeight + "px",
-        bottom: 0,
+        size: navBarSizeRef.current.offsetHeight,
+        marginDirection: "marginBottom",
       });
     } else if (posState == "Top") {
-      setNavBarSize({ marginTop: navBarSizeRef.current.offsetHeight + "px" });
+      setNavBarSize({
+        size: navBarSizeRef.current.offsetHeight,
+        marginDirection: "marginTop",
+      });
     } else if (posState == "Left") {
-      setNavBarSize({ marginLeft: navBarSizeRef.current.offsetWidth + "px" });
+      setNavBarSize({
+        size: navBarSizeRef.current.offsetWidth,
+        marginDirection: "marginLeft",
+      });
     }
   }, [posState]);
 
@@ -144,7 +152,6 @@ export default function Page() {
       handlePositionChange("Left"); // default value
     }
 
-    console.log(addedContent);
     setShowSelect(false);
   };
 
@@ -160,19 +167,10 @@ export default function Page() {
   // };
 
   const handleDragStart = (event: DragEndEvent) => {
-    // setActiveId(event.active.id);
-
-    // const item = addedContent.find((item) => item.id == activeId);
-
     setDraggingComponentId(event.active.id);
-    // setDraggingParent(false);
-
-    // if id is of a parent component, make the grid a specific size with a conditional classname
   };
 
   const handleDragCancel = () => {
-    setDraggingParent(false);
-    setActiveId(null);
     setDraggingComponentId(null);
     return;
   };
@@ -215,8 +213,13 @@ export default function Page() {
       return;
     }
 
+    const isParentComponent = addedContent.find(
+      (component) => component.id == newStatus && component.dnd == "Droppable"
+    );
+
     if (
       elementId !== newStatus &&
+      !isParentComponent &&
       (delta.x + draggedComponent.position.x + draggableRef.current.offsetWidth * 0.98 >
         over.rect.width ||
         delta.y + draggedComponent.position.y + draggableRef.current.offsetHeight * 0.98 >
@@ -240,7 +243,7 @@ export default function Page() {
       const swappedComponent = addedContent.find((item) => item.id === over.id);
 
       setAddedContent((prevAddedContent) => {
-        prevAddedContent.map((component) => {
+        const updatedContent = prevAddedContent.map((component) => {
           if (component.id === draggedComponent.id) {
             return {
               ...component,
@@ -252,8 +255,10 @@ export default function Page() {
               position: draggedComponent.position,
             };
           }
-          return arraySwap(component, draggedComponent.id, swappedComponent.id);
+          return component;
         });
+
+        return arraySwap(updatedContent, draggedComponent.id, swappedComponent.id);
       });
     } else {
       setAddedContent((prevAddedContent) => {
@@ -271,10 +276,14 @@ export default function Page() {
                 },
               };
             } else {
+              const test = prevAddedContent.find(
+                (component) => component.id === newStatus
+              );
               return {
                 ...component,
                 gridId: null,
-                parentId: component.id === newStatus ? null : newStatus,
+                // parentId: component.id === newStatus ? null : newStatus,
+                parentId: test.dnd === "Droppable" ? newStatus : null,
                 isDropped: true,
                 position: {
                   x: component.position.x + delta.x,
@@ -328,48 +337,43 @@ export default function Page() {
             className={`grid grid-cols-[repeat(auto-fill,minmax(20px,20px))] grid-rows-[repeat(auto-fill,minmax(20px,20px))] absolute w-full h-screen bg-[linear-gradient(to_right,#306f7a_1px,transparent_1px),linear-gradient(to_bottom,#306f7a_1px,transparent_1px)] bg-[size:20px_20px]`}
           ></div>
         )}
-        {/* <div className={`h-screen w-[${navBarSizeRef?.current?.offsetWidth}px]`}> */}
         {/* PARENT COMPONENTS */}
-        <div
-          // style={{
-          //   height: "100%",
-          //   minWidth: "fit-content",
-          //   maxWidth: "320px",
-          //   width: "100%",
-          // }}
-          // className={`h-screen w-full max-w-[320px]`}
-          className="flex flex-col w-full h-screen absolute justify-center"
-        >
-          {addedContent
-            .filter((component) => component.dnd === "Droppable")
-            .map((component) => (
-              <Droppable
-                id={component.id}
-                className="z-20 w-full h-full"
-                key={component.id}
-              >
-                <DynamicElement
-                  element={component}
-                  handleInputChange={handleInputChange}
-                  handlePositionChange={handlePositionChange}
-                  previewMode={previewMode}
-                  input={component.input}
-                  childElements={addedContent.filter(
-                    (items) => items.parentId === component.id
-                  )}
-                  ref={component.tag === "nav bar" ? navBarSizeRef : null}
-                  positionStyle={component.tag === "nav bar" ? positionStyle : null}
-                />
-              </Droppable>
-            ))}
-        </div>
+        {addedContent
+          .filter((component) => component.dnd === "Droppable")
+          .map((component) => (
+            <Droppable
+              id={component.id}
+              className={`${positionStyle} absolute mt-20`}
+              key={component.id}
+            >
+              <DynamicElement
+                element={component}
+                handleInputChange={handleInputChange}
+                handlePositionChange={handlePositionChange}
+                previewMode={previewMode}
+                input={component.input}
+                childElements={addedContent.filter(
+                  (items) => items.parentId === component.id
+                )}
+                ref={component.tag === "nav bar" ? navBarSizeRef : null}
+                positionStyle={component.tag === "nav bar" ? positionStyle : null}
+                draggableRef={draggableRef}
+              />
+            </Droppable>
+          ))}
         {/* NON-PARENT COMPONENTS */}
-        <div className="h-screen w-full">
-          {/* TODO add the dynamic style from the navbar */}
+        <div
+          className="h-screen w-full"
+          style={{ width: `calc(100% - ${navBarSizeRef?.size})` }}
+        >
           <Droppable
             id={"mainGrid"}
             className="gap-32 h-screen w-full z-40 fixed"
-            style={navBarSize}
+            // TODO improve the style so that it can account for other parent components
+            style={{
+              width: `calc(100% - ${navBarSize?.size}px)`,
+              [navBarSize?.marginDirection]: `${navBarSize?.size}px`,
+            }}
           >
             <SortableContext
               items={addedContent
@@ -377,7 +381,6 @@ export default function Page() {
                 .map((component) => component.id)}
               strategy={rectSwappingStrategy}
             >
-              {/* <Droppable id={gridItem.gridId} key={index} className="w-full h-full"> */}
               {addedContent
                 .filter((component) => component.parentId === null)
                 .map((component) => (
@@ -399,6 +402,7 @@ export default function Page() {
                   >
                     {component.dnd !== "Droppable" ? (
                       <>
+                        {/* TODO Move the sortable up, so that the collision works better? */}
                         <Sortable
                           id={component.id}
                           key={component.id}
@@ -434,7 +438,7 @@ export default function Page() {
               {addedContent
                 .filter((item) => item?.id === draggingComponentId)
                 .map((item) => (
-                  <div key={item.id}>
+                  <div key={item.id} className="w-full h-screen">
                     <DynamicElement
                       key={item.id}
                       tag={item.tag}
@@ -444,6 +448,9 @@ export default function Page() {
                       handleInputChange={handleInputChange}
                       previewMode={previewMode}
                       input={item.input}
+                      childElements={addedContent.filter(
+                        (items) => items.parentId === item.id
+                      )}
                     />
                   </div>
                 ))}

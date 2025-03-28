@@ -1,4 +1,14 @@
 import { IElement } from "@/app/types/index";
+import { TextArea } from "@/app/ui/create/components/textArea";
+import { UserNavBar } from "@/app/ui/create/components/userNavBar";
+import { Header } from "@/app/ui/create/components/header";
+// import { TextArea, UserNavBar } from "@/app/ui/create/components";
+
+export const CreateComponents = [
+  { tag: "textarea", component: TextArea },
+  { tag: "nav bar", component: UserNavBar },
+  { tag: "header", component: Header },
+];
 
 export const styles: Array = [
   {
@@ -39,10 +49,10 @@ export const elements: IElement[] = [
   {
     id: null,
     componentId: 2,
-    tag: "container",
+    tag: "header",
     style: "basic",
     input: "",
-    placeholder: "Container",
+    placeholder: "Header",
     dnd: "Droppable",
     otherElements: [],
     isDropped: false,
