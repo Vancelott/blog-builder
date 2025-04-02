@@ -10,10 +10,12 @@ import { Header } from "@/app/ui/create/components/header";
 import { UserNavBar } from "@/app/ui/create/components/userNavBar";
 import { ChildElements } from "@/app/ui/create/childElements";
 import { CreateComponents } from "@/app/utils/constants";
+import { Resizable } from "re-resizable";
 
 export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
   const [textAreaInput, setTextAreaInput] = useState<string>("");
 
+  // TODO Delete?
   // if (props.element.gridId && props.childElements?.length > 0) {
   //   return (
   //     <div>
@@ -113,10 +115,27 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
 
   if (props.element.tag == "nav bar") {
     return (
+      // <Resizable
+      //   size={{
+      //     width: props.ref.current?.offsetWidth,
+      //     height: props.ref.current?.offsetHeight,
+      //   }}
+      //   onResizeStop={(e, direction, ref, d) => {
+      //     // console.log("e", e);
+      //     // console.log("direction", direction);
+      //     // console.log("ref", ref);
+      //     // console.log("d", d);
+      // props.ref.current.style.offsetWidth =
+      //   props?.ref?.current?.style.offsetWidth + d.width;
+      // props.ref.current.style.offsetHeight =
+      //   props?.ref?.current?.style.offsetHeight + d.height;
+      //   }}
+      // >
       <UserNavBar
-        style={props.positionChange}
         positionStyle={props.positionStyle}
         ref={props.ref}
+        size={props.element.size}
+        tempSizeDelta={props.tempSizeDelta}
       >
         <div className="z-20 mt-8">
           <PositionButtons handlePositionChange={props.handlePositionChange} />
@@ -128,6 +147,7 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
           />
         )}
       </UserNavBar>
+      // </Resizable>
     );
   }
 

@@ -2,7 +2,7 @@ import { PropsWithChildren, useState, useEffect, useRef } from "react";
 
 interface IHeader {
   positionStyle: string;
-  ref: any;
+  ref: HTMLDivElement;
 }
 
 export function Header(props: PropsWithChildren<IHeader>) {

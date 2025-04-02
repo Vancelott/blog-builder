@@ -27,6 +27,7 @@ import {
   arraySwap,
 } from "@dnd-kit/sortable";
 import { elements, styles } from "@/app/utils/constants";
+import { Resizable } from "re-resizable";
 
 export default function Page() {
   // TODO add default content / create a new state variable for the default content (if you think there should be such)
@@ -36,9 +37,8 @@ export default function Page() {
   const [previewMode, setPreviewMode] = useState<boolean>(false);
   const [draggingComponentId, setDraggingComponentId] = useState<number>(null);
   const [showGrid, setShowGrid] = useState<boolean>(false);
-  const [positionStyle, setPositionStyle] = useState<string>("");
   const [navBarSize, setNavBarSize] = useState({});
-  const [posState, setPosState] = useState<string>("");
+  const [posState, setPosState] = useState<string>();
   const [screenSize, setScreenSize] = useState({
     width: window?.innerWidth,
     height: window?.innerHeight,
@@ -47,8 +47,10 @@ export default function Page() {
     deltaX: 0,
     deltaY: 0,
   });
+  const [tempSizeDelta, setTempSizeDelta] = useState({ width: 0, height: 0 });
 
   const navBarSizeRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
   const draggableRef = useRef<HTMLDivElement>(null);
 
   const mouseSensor = useSensor(MouseSensor, {
@@ -75,22 +77,22 @@ export default function Page() {
   useEffect(() => {
     if (posState == "Right") {
       setNavBarSize({
-        size: navBarSizeRef.current.offsetWidth,
+        size: navBarSizeRef.current?.offsetWidth,
         marginDirection: "marginRight",
       });
     } else if (posState == "Bottom") {
       setNavBarSize({
-        size: navBarSizeRef.current.offsetHeight,
+        size: navBarSizeRef.current?.offsetHeight,
         marginDirection: "marginBottom",
       });
     } else if (posState == "Top") {
       setNavBarSize({
-        size: navBarSizeRef.current.offsetHeight,
+        size: navBarSizeRef.current?.offsetHeight,
         marginDirection: "marginTop",
       });
     } else if (posState == "Left") {
       setNavBarSize({
-        size: navBarSizeRef.current.offsetWidth,
+        size: navBarSizeRef.current?.offsetWidth,
         marginDirection: "marginLeft",
       });
     }
@@ -107,8 +109,6 @@ export default function Page() {
       });
     };
 
-    console.log("screenSize", screenSize);
-
     window.addEventListener("resize", handleResize);
 
     return () => {
@@ -120,23 +120,42 @@ export default function Page() {
     if (pos === posState) {
       return;
     }
-
     setNavBarSize(null);
-    setPositionStyle(null);
     setPosState(pos);
 
-    if (pos == "Right") {
-      setPositionStyle("inset-y-0 right-0 w-80 h-screen place-items-center");
-    } else if (pos == "Bottom") {
-      setPositionStyle("inset-x-0 bottom-0 h-28 w-screen place-items-start px-8");
-    } else if (pos == "Top") {
-      setPositionStyle("inset-x-0 top-0 h-28 w-screen place-items-start px-8");
-    } else if (pos == "Left") {
-      setPositionStyle("inset-y-0 left-0 w-80 h-screen place-items-center");
-    }
+    const positionClasses = [
+      {
+        pos: "Right",
+        // className: "inset-y-0 right-0 min-w-80 min-h-screen place-items-center",
+        className: "inset-y-0 right-0 w-80 h-screen place-items-center",
+      },
+      {
+        pos: "Bottom",
+        className: "inset-x-0 bottom-0 h-28 w-screen place-items-start px-8 mt-20",
+      },
+      {
+        pos: "Top",
+        className: "inset-x-0 top-0 h-28 w-screen place-items-start px-8 mt-20",
+      },
+      {
+        pos: "Left",
+        // className: "inset-y-0 left-0 min-w-80 min-h-screen place-items-center",
+        className: "inset-y-0 left-0 w-80 min-h-screen place-items-center",
+      },
+    ];
+
+    const { className } = positionClasses.find((item) => item.pos === pos);
+    setAddedContent((prevAddedContent) => {
+      return prevAddedContent.map((component) => {
+        if (component.tag === "nav bar") {
+          return { ...component, positionClass: className };
+        }
+        return component;
+      });
+    });
   };
 
-  const handleSubmit = (elementId: number) => {
+  const handleSubmit = async (elementId: number) => {
     let elementToBeAdded: Element;
     elements.map((item) => {
       if (item.componentId == elementId) {
@@ -149,7 +168,8 @@ export default function Page() {
     setAddedContent((prevContent) => [...prevContent, elementToBeAdded]);
 
     if (elementToBeAdded.tag === "nav bar") {
-      handlePositionChange("Left"); // default value
+      // await handlePositionChange("Left"); // default value
+      await handlePositionChange("Right");
     }
 
     setShowSelect(false);
@@ -276,14 +296,14 @@ export default function Page() {
                 },
               };
             } else {
-              const test = prevAddedContent.find(
+              // used to prevent an accidental update of parentId to a swappable component
+              const droppedComponent = prevAddedContent.find(
                 (component) => component.id === newStatus
               );
               return {
                 ...component,
                 gridId: null,
-                // parentId: component.id === newStatus ? null : newStatus,
-                parentId: test.dnd === "Droppable" ? newStatus : null,
+                parentId: droppedComponent.dnd === "Droppable" ? newStatus : null,
                 isDropped: true,
                 position: {
                   x: component.position.x + delta.x,
@@ -320,6 +340,28 @@ export default function Page() {
     });
   };
 
+  const updateCompSize = (id, d) => {
+    const { height, width } = d;
+
+    setAddedContent((prevAddedContent) => {
+      return prevAddedContent.map((component) => {
+        if (component.id === id) {
+          return {
+            ...component,
+            size: {
+              ...component.size,
+              height: component.size.height + height,
+              width: component.size.width + width,
+            },
+          };
+        }
+        return component;
+      });
+    });
+    console.log("prevAddedContent", addedContent);
+    setTempSizeDelta({ height: 0, width: 0 });
+  };
+
   return (
     // TODO remove flex-col?
     // <div className="flex h-screen w-full relative overflow-hidden">-
@@ -343,37 +385,89 @@ export default function Page() {
           .map((component) => (
             <Droppable
               id={component.id}
-              className={`${positionStyle} absolute mt-20`}
+              // className="absolute z-20"
+              className={`${component.positionClass} absolute z-20`}
               key={component.id}
             >
-              <DynamicElement
-                element={component}
-                handleInputChange={handleInputChange}
-                handlePositionChange={handlePositionChange}
-                previewMode={previewMode}
-                input={component.input}
-                childElements={addedContent.filter(
-                  (items) => items.parentId === component.id
-                )}
-                ref={component.tag === "nav bar" ? navBarSizeRef : null}
-                positionStyle={component.tag === "nav bar" ? positionStyle : null}
-                draggableRef={draggableRef}
-              />
+              <Resizable
+                minHeight={"100%"}
+                minWidth="64px"
+                style={{
+                  border: "1px dashed #ccc",
+                  // TODO consider removing/adding fixed positioning?
+                  position: "fixed",
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                }}
+                // boundsByDirection={true}
+                // lockAspectRatio={true}
+                enable={{
+                  top: false,
+                  right: false,
+                  bottom: false,
+                  left: true,
+                  topRight: false,
+                  bottomRight: false,
+                  bottomLeft: false,
+                  topLeft: false,
+                }}
+                handleWrapperStyle={{
+                  zIndex: 50,
+                }}
+                size={{
+                  // width: navBarSizeRef.current?.offsetWidth + component.size?.width,
+                  // height: navBarSizeRef.current?.offsetHeight + component.size?.height,
+                  width: navBarSizeRef.current?.offsetWidth,
+                  height: navBarSizeRef.current?.offsetHeight,
+                }}
+                onResizeStop={(e, direction, ref, d) => {
+                  updateCompSize(component.id, d);
+                }}
+                onResize={(e, direction, ref, d) => {
+                  console.log("onResized", d);
+                  // setTempSizeDelta({
+                  //   width: tempSizeDelta.width + d.width,
+                  //   height: tempSizeDelta.height + d.height,
+                  // });
+                  setTempSizeDelta({
+                    width: d.width,
+                    height: d.height,
+                  });
+                }}
+              >
+                <DynamicElement
+                  element={component}
+                  handleInputChange={handleInputChange}
+                  handlePositionChange={handlePositionChange}
+                  previewMode={previewMode}
+                  input={component.input}
+                  childElements={addedContent.filter(
+                    (items) => items.parentId === component.id
+                  )}
+                  tempSizeDelta={tempSizeDelta}
+                  ref={component.tag === "nav bar" ? navBarSizeRef : null}
+                  positionStyle={component.positionClass}
+                  draggableRef={draggableRef}
+                />
+              </Resizable>
             </Droppable>
           ))}
         {/* NON-PARENT COMPONENTS */}
         <div
-          className="h-screen w-full"
-          style={{ width: `calc(100% - ${navBarSizeRef?.size})` }}
+        // className="h-screen"
+        // style={{ width: `calc(100% - ${navBarSizeRef?.size})` }}
         >
           <Droppable
             id={"mainGrid"}
-            className="gap-32 h-screen w-full z-40 fixed"
+            // className="gap-32 h-screen w-full z-40 fixed"
             // TODO improve the style so that it can account for other parent components
-            style={{
-              width: `calc(100% - ${navBarSize?.size}px)`,
-              [navBarSize?.marginDirection]: `${navBarSize?.size}px`,
-            }}
+            // width: `calc(100% - ${navBarSizeRef.current?.offsetWidth}px)`,
+            // [navBarSize?.marginDirection]: `${navBarSizeRef.current?.offsetWidth + 2}px`,
+            // style={{
+            //   width: `calc(100% - ${navBarSize?.size}px)`,
+            //   [navBarSize?.marginDirection]: `${navBarSize?.size}px`,
+            // }}
           >
             <SortableContext
               items={addedContent
@@ -448,9 +542,6 @@ export default function Page() {
                       handleInputChange={handleInputChange}
                       previewMode={previewMode}
                       input={item.input}
-                      childElements={addedContent.filter(
-                        (items) => items.parentId === item.id
-                      )}
                     />
                   </div>
                 ))}

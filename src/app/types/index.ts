@@ -3,6 +3,7 @@ export interface IElement {
   componentId: number;
   tag: string;
   style: string;
+  positionClass: string;
   input: string;
   placeholder: string;
   dnd: "Droppable" | "Draggable" | null;

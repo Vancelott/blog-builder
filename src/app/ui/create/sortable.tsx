@@ -19,7 +19,7 @@ export function Sortable(props: PropsWithChildren<ISortable>) {
 
   const style = {
     // changed from Transform to Translate due to an issue with the scale of the components
-    transform: CSS.Translate.toString(transform),
+    transform: CSS.Transform.toString(transform),
     transition,
   };
 
