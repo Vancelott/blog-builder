@@ -1,3 +1,18 @@
+export type Resize = {
+  height: number | string;
+  width: number | string;
+  deltaHeight: number;
+  deltaWidth: number;
+  minHeight: number | string;
+  minWidth: number | string;
+};
+
+export type TempSizeDelta = {
+  width: number;
+  height: number;
+  id: number | null;
+};
+
 export interface IElement {
   id: number | null;
   componentId: number;
@@ -11,7 +26,8 @@ export interface IElement {
   otherElements?: IElement[];
   isDropped: boolean;
   gridId: string;
-  position: { x: number; y: number };
+  position: { x: number; y: number; placement?: string };
+  size?: Resize;
 }
 
 export interface IDynamicElement {

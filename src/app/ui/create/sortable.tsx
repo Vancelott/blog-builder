@@ -5,6 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 interface ISortable {
   id: string;
   position: object;
+  disabled: boolean;
 }
 
 export function Sortable(props: PropsWithChildren<ISortable>) {
@@ -14,12 +15,13 @@ export function Sortable(props: PropsWithChildren<ISortable>) {
       duration: 150,
       easing: "linear",
     },
+    disabled: props.disabled,
     animateLayoutChanges: () => false,
   });
 
   const style = {
     // changed from Transform to Translate due to an issue with the scale of the components
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Translate.toString(transform),
     transition,
   };
 

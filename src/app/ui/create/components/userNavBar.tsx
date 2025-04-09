@@ -1,11 +1,12 @@
 import { PropsWithChildren, useState, useEffect, useRef } from "react";
-import { Resizable } from "re-resizable";
+import { Resize, TempSizeDelta } from "@/app/types/index";
 
 interface IUserNavBar {
-  positionStyle: string;
+  positionClass: string;
   ref: HTMLDivElement;
-  size: any;
-  tempSizeDelta: any;
+  size: Resize;
+  tempSizeDelta: TempSizeDelta;
+  placement: string;
 }
 
 export function UserNavBar(props: PropsWithChildren<IUserNavBar>) {
@@ -13,8 +14,9 @@ export function UserNavBar(props: PropsWithChildren<IUserNavBar>) {
   const [size, setSize] = useState({
     initialHeight: 0,
     initialWidth: 0,
+    placement: props.placement,
   });
-  const { positionStyle, ref } = props;
+  const { positionClass, ref } = props;
 
   useEffect(() => {
     setSize({
@@ -24,10 +26,23 @@ export function UserNavBar(props: PropsWithChildren<IUserNavBar>) {
   }, []);
 
   useEffect(() => {
-    ref.current = navRef.current;
-  }, [positionStyle, ref, navRef]);
+    if (props.placement !== size.placement) {
+      setSize({
+        initialWidth: navRef.current?.offsetWidth,
+        initialHeight: navRef.current?.offsetHeight,
+      });
+    }
+  }, [props.placement, size.placement]);
 
-  const calculateDimension = (initial, prevDelta, tempDelta) => {
+  useEffect(() => {
+    ref.current = navRef.current;
+  }, [ref, navRef]);
+
+  const calculateDimension = (initial: number, prevDelta: number, tempDelta: number) => {
+    if (!tempDelta && !prevDelta) {
+      return null;
+    }
+
     const base = initial + (prevDelta || 0);
     const temp = tempDelta || 0;
     const total = base + (temp !== 0 ? temp : 0);
@@ -39,27 +54,28 @@ export function UserNavBar(props: PropsWithChildren<IUserNavBar>) {
     /* TODO make the navbar responsive on mobile, but make the top/bottom options like a drawer possibly */
     <div
       ref={navRef}
+      data-type="navbar"
       style={{
         width: calculateDimension(
           size.initialWidth,
-          props.size?.width,
+          props.size?.deltaWidth,
           props.tempSizeDelta?.width
         ),
         height: calculateDimension(
           size.initialHeight,
-          props.size?.height,
+          props.size?.deltaHeight,
           props.tempSizeDelta?.height
         ),
         transition: "none",
       }}
       className={`${
-        props.positionStyle
-          ? `${props.positionStyle}`
-          : "inset-y-0 left-0 place-items-center "
+        positionClass ? `${positionClass}` : "inset-y-0 left-0 place-items-center "
       } flex flex-col fixed justify-start z-10 bg-slate-500`}
       // TODO add w-[${navRef.current?.offsetWidth}px] h-[${navRef.current?.offsetHeight}px] ?
     >
       <div>{props.children}</div>
+      <p>{navRef.current?.offsetHeight}</p>
+      <p>{navRef.current?.offsetWidth}</p>
     </div>
   );
 }

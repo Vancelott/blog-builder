@@ -47,11 +47,15 @@ export default function Page() {
     deltaX: 0,
     deltaY: 0,
   });
-  const [tempSizeDelta, setTempSizeDelta] = useState({ width: 0, height: 0 });
+  const [tempSizeDelta, setTempSizeDelta] = useState({ width: 0, height: 0, id: null });
+  const [parentMargin, setParentMargin] = useState({});
 
   const navBarSizeRef = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
+  // const headerRef = useRef<HTMLDivElement>(null);
+  const parentComponentsRef = useRef(null);
   const draggableRef = useRef<HTMLDivElement>(null);
+  // const componentRefs = useRef<Map<string, HTMLDivElement>>({});
+  const componentRefs = useRef<Map<string, HTMLDivElement>>({});
 
   const mouseSensor = useSensor(MouseSensor, {
     // Require the mouse to move by 5 pixels before activating
@@ -96,6 +100,7 @@ export default function Page() {
         marginDirection: "marginLeft",
       });
     }
+    getParentMargin();
   }, [posState]);
 
   useEffect(() => {
@@ -116,7 +121,7 @@ export default function Page() {
     };
   }, [screenSize]);
 
-  const handlePositionChange = (pos: string) => {
+  const handlePositionChange = async (pos: string) => {
     if (pos === posState) {
       return;
     }
@@ -125,34 +130,59 @@ export default function Page() {
 
     const positionClasses = [
       {
-        pos: "Right",
+        position: "Right",
         // className: "inset-y-0 right-0 min-w-80 min-h-screen place-items-center",
         className: "inset-y-0 right-0 w-80 h-screen place-items-center",
+        size: { minWidth: "64px", minHeight: "100vh", height: "100vh", width: "325px" },
       },
       {
-        pos: "Bottom",
+        position: "Bottom",
         className: "inset-x-0 bottom-0 h-28 w-screen place-items-start px-8 mt-20",
+        size: { minWidth: "100vh", minHeight: "48px", height: "128px", width: "100vw" },
       },
       {
-        pos: "Top",
-        className: "inset-x-0 top-0 h-28 w-screen place-items-start px-8 mt-20",
+        position: "Top",
+        className: "inset-x-0 top-0 h-28 w-screen place-items-start px-8 mb-20",
+        size: {
+          minWidth: "100vh",
+          minHeight: "48px",
+          height: "128px",
+          width: "100vw",
+        },
       },
       {
-        pos: "Left",
+        position: "Left",
         // className: "inset-y-0 left-0 min-w-80 min-h-screen place-items-center",
-        className: "inset-y-0 left-0 w-80 min-h-screen place-items-center",
+        className: "inset-y-0 left-0 w-80 h-screen place-items-center",
+        size: { minWidth: "64px", minHeight: "100vh", height: "100vh", width: "325px" },
       },
     ];
 
-    const { className } = positionClasses.find((item) => item.pos === pos);
+    const { position, className, size } = positionClasses.find(
+      (item) => item.position === pos
+    );
+
     setAddedContent((prevAddedContent) => {
       return prevAddedContent.map((component) => {
         if (component.tag === "nav bar") {
-          return { ...component, positionClass: className };
+          return {
+            ...component,
+            positionClass: className,
+            position: { ...component.position, placement: position },
+            size: {
+              deltaWidth: 0,
+              deltaHeight: 0,
+              width: size.width,
+              height: size.height,
+              minWidth: size.minWidth,
+              minHeight: size.minHeight,
+            },
+          };
         }
         return component;
       });
     });
+    await getParentMargin();
   };
 
   const handleSubmit = async (elementId: number) => {
@@ -168,10 +198,10 @@ export default function Page() {
     setAddedContent((prevContent) => [...prevContent, elementToBeAdded]);
 
     if (elementToBeAdded.tag === "nav bar") {
-      // await handlePositionChange("Left"); // default value
-      await handlePositionChange("Right");
+      await handlePositionChange("Left"); // default value
     }
 
+    await getParentMargin();
     setShowSelect(false);
   };
 
@@ -237,18 +267,19 @@ export default function Page() {
       (component) => component.id == newStatus && component.dnd == "Droppable"
     );
 
-    if (
-      elementId !== newStatus &&
-      !isParentComponent &&
-      (delta.x + draggedComponent.position.x + draggableRef.current.offsetWidth * 0.98 >
-        over.rect.width ||
-        delta.y + draggedComponent.position.y + draggableRef.current.offsetHeight * 0.98 >
-          over.rect.height)
-    ) {
-      // TODO instead of returning, should the component be placed at the max value of whichever axis overflowed?
-      console.log("Outside of parent element");
-      return;
-    }
+    // TODO this still does not work when swapping component, due to `over` being the other component, which results in its height/width being less than the other params
+    // if (
+    //   elementId !== newStatus &&
+    //   !isParentComponent &&
+    //   (delta.x + draggedComponent.position.x + draggableRef.current.offsetWidth * 0.98 >
+    //     over.rect.width ||
+    //     delta.y + draggedComponent.position.y + draggableRef.current.offsetHeight * 0.98 >
+    //       over.rect.height)
+    // ) {
+    //   // TODO instead of returning, should the component be placed at the max value of whichever axis overflowed?
+    //   console.log("Outside of parent element");
+    //   return;
+    // }
 
     // TODO should the user be allowed to place components just outside of the window's width/height?
     if (
@@ -352,14 +383,109 @@ export default function Page() {
               ...component.size,
               height: component.size.height + height,
               width: component.size.width + width,
+              deltaHeight: component.size.deltaHeight + height,
+              deltaWidth: component.size.deltaWidth + width,
             },
           };
         }
+        console.log("component", component);
         return component;
       });
     });
-    console.log("prevAddedContent", addedContent);
-    setTempSizeDelta({ height: 0, width: 0 });
+    setTempSizeDelta({ height: 0, width: 0, id: null });
+    getParentMargin();
+  };
+
+  const updateCompDraggable = (id, value) => {
+    setAddedContent((prevAddedContent) => {
+      return prevAddedContent.map((component) => {
+        if (component.id === id) {
+          return {
+            ...component,
+            disabled: value,
+          };
+        }
+      });
+    });
+  };
+
+  // TODO combine all helper functions into one?
+  const getResizableStyle = (componentPosition: string) => {
+    const additionalStyling = { position: "fixed", border: "1px dashed #ccc" };
+
+    const styles = {
+      // TODO fix - additionalStyling doesn't work this way
+      Right: { right: 0, top: 0, bottom: 0, position: "fixed", additionalStyling },
+      Left: { left: 0, top: 0, bottom: 0, position: "fixed", additionalStyling },
+      Bottom: { left: 0, right: 0, bottom: 0, position: "fixed", additionalStyling },
+      Top: { left: 0, right: 0, top: 0, position: "fixed", additionalStyling },
+    };
+
+    return styles[componentPosition];
+  };
+
+  const getEnabledHandles = (componentPosition: string) => {
+    const handles = {
+      Right: { left: true },
+      Left: { right: true },
+      Bottom: { top: true },
+      Top: { bottom: true },
+    };
+
+    return handles[componentPosition];
+  };
+
+  const getParentMargin = () => {
+    // const components = parentComponentsRef.current?.children;
+
+    setParentMargin({});
+
+    const marginsToApply = {
+      marginTop: 0,
+      marginBottom: 0,
+      marginLeft: 0,
+      marginRight: 0,
+    };
+
+    // // for (const item of components) {
+    // for (const item in componentRefs.current) {
+    //   console.log(componentRefs);
+    //   console.log(item);
+    //   // const compInfo = item.getBoundingClientRect();
+    //   // if (compInfo.x === 0 && compInfo.y === 0) {
+    //   if (item.x === 0 && item.y === 0) {
+    //     console.log("item.firstChild.offsetWidth", item.firstChild.offsetWidth);
+    //     if (item.firstChild.offsetWidth < item.firstChild.offsetHeight) {
+    //       marginsToApply["marginLeft"] += item.firstChild.offsetWidth + 1;
+    //     } else {
+    //       marginsToApply["marginTop"] += item.firstChild.offsetHeight + 1;
+    //     }
+    //   } else {
+    //     if (item.firstChild.offsetWidth < item.firstChild.offsetHeight) {
+    //       marginsToApply["marginRight"] += item.firstChild.offsetWidth + 1;
+    //     } else {
+    //       marginsToApply["marginBottom"] += item.firstChild.offsetHeight + 1;
+    //     }
+    //   }
+    // }
+
+    Object.entries(componentRefs.current).forEach(([id, element]) => {
+      if (element.firstChild.offsetLeft === 0 && element.firstChild.offsetTop === 0) {
+        if (element.firstChild.offsetWidth < element.firstChild.offsetHeight) {
+          marginsToApply["marginLeft"] += element.firstChild.offsetWidth + 1;
+        } else {
+          marginsToApply["marginTop"] += element.firstChild.offsetHeight + 1;
+        }
+      } else {
+        if (element.firstChild.offsetWidth < element.firstChild.offsetHeight) {
+          // TODO the main grid needs right-0 top-0 (or bottom-0 depends) for these to work
+          marginsToApply["marginRight"] += element.firstChild.offsetWidth + 1;
+        } else {
+          marginsToApply["marginBottom"] += element.firstChild.offsetHeight + 1;
+        }
+      }
+    });
+    setParentMargin(marginsToApply);
   };
 
   return (
@@ -380,94 +506,82 @@ export default function Page() {
           ></div>
         )}
         {/* PARENT COMPONENTS */}
-        {addedContent
-          .filter((component) => component.dnd === "Droppable")
-          .map((component) => (
-            <Droppable
-              id={component.id}
-              // className="absolute z-20"
-              className={`${component.positionClass} absolute z-20`}
-              key={component.id}
-            >
-              <Resizable
-                minHeight={"100%"}
-                minWidth="64px"
-                style={{
-                  border: "1px dashed #ccc",
-                  // TODO consider removing/adding fixed positioning?
-                  position: "fixed",
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                }}
-                // boundsByDirection={true}
-                // lockAspectRatio={true}
-                enable={{
-                  top: false,
-                  right: false,
-                  bottom: false,
-                  left: true,
-                  topRight: false,
-                  bottomRight: false,
-                  bottomLeft: false,
-                  topLeft: false,
-                }}
-                handleWrapperStyle={{
-                  zIndex: 50,
-                }}
-                size={{
-                  // width: navBarSizeRef.current?.offsetWidth + component.size?.width,
-                  // height: navBarSizeRef.current?.offsetHeight + component.size?.height,
-                  width: navBarSizeRef.current?.offsetWidth,
-                  height: navBarSizeRef.current?.offsetHeight,
-                }}
-                onResizeStop={(e, direction, ref, d) => {
-                  updateCompSize(component.id, d);
-                }}
-                onResize={(e, direction, ref, d) => {
-                  console.log("onResized", d);
-                  // setTempSizeDelta({
-                  //   width: tempSizeDelta.width + d.width,
-                  //   height: tempSizeDelta.height + d.height,
-                  // });
-                  setTempSizeDelta({
-                    width: d.width,
-                    height: d.height,
-                  });
-                }}
+        <div ref={parentComponentsRef}>
+          {addedContent
+            .filter((component) => component.dnd === "Droppable")
+            .map((component) => (
+              <Droppable
+                id={component.id}
+                // className="absolute z-20"
+                className={`${component.positionClass} absolute z-20`}
+                key={component.id}
               >
-                <DynamicElement
-                  element={component}
-                  handleInputChange={handleInputChange}
-                  handlePositionChange={handlePositionChange}
-                  previewMode={previewMode}
-                  input={component.input}
-                  childElements={addedContent.filter(
-                    (items) => items.parentId === component.id
-                  )}
-                  tempSizeDelta={tempSizeDelta}
-                  ref={component.tag === "nav bar" ? navBarSizeRef : null}
-                  positionStyle={component.positionClass}
-                  draggableRef={draggableRef}
-                />
-              </Resizable>
-            </Droppable>
-          ))}
+                <div ref={(el) => (componentRefs.current[component.id] = el)}>
+                  <Resizable
+                    minHeight={component.size.minHeight}
+                    minWidth={component.size.minWidth}
+                    style={getResizableStyle(component.position.placement)}
+                    enable={getEnabledHandles(component.position.placement)}
+                    handleWrapperStyle={{
+                      zIndex: 50,
+                    }}
+                    size={{
+                      width: component.size.width,
+                      height: component.size.height,
+                    }}
+                    onResizeStop={(e, direction, ref, d) => {
+                      console.log("ref", ref.style);
+                      updateCompSize(component.id, d);
+                    }}
+                    onResize={(e, direction, ref, d) => {
+                      setTempSizeDelta({
+                        width: d.width,
+                        height: d.height,
+                        id: component.id,
+                      });
+                    }}
+                  >
+                    {/* <div ref={(el) => (componentRefs.current[component.id] = el)}> */}
+                    <DynamicElement
+                      element={component}
+                      handleInputChange={handleInputChange}
+                      handlePositionChange={handlePositionChange}
+                      previewMode={previewMode}
+                      input={component.input}
+                      childElements={addedContent.filter(
+                        (items) => items.parentId === component.id
+                      )}
+                      tempSizeDelta={tempSizeDelta}
+                      // TODO handle this prop for any future refs
+                      ref={component.tag === "nav bar" ? navBarSizeRef : null}
+                      draggableRef={draggableRef}
+                    />
+                    {/* </div> */}
+                  </Resizable>
+                </div>
+              </Droppable>
+            ))}
+        </div>
         {/* NON-PARENT COMPONENTS */}
         <div
-        // className="h-screen"
-        // style={{ width: `calc(100% - ${navBarSizeRef?.size})` }}
+          className="absolute"
+          style={{
+            marginTop: `${parentMargin.marginTop || 0}px`,
+            marginLeft: `${parentMargin.marginLeft || 0}px`,
+            marginRight: `${parentMargin.marginRight || 0}px`,
+            marginBottom: `${parentMargin.marginBottom || 0}px`,
+            width: `calc(100vw - ${
+              (parentMargin.marginLeft || 0) + (parentMargin.marginRight || 0)
+            }px)`,
+            height: `calc(100vh - ${
+              (parentMargin.marginTop || 0) + (parentMargin.marginBottom || 0)
+            }px)`,
+          }}
         >
           <Droppable
             id={"mainGrid"}
-            // className="gap-32 h-screen w-full z-40 fixed"
-            // TODO improve the style so that it can account for other parent components
-            // width: `calc(100% - ${navBarSizeRef.current?.offsetWidth}px)`,
-            // [navBarSize?.marginDirection]: `${navBarSizeRef.current?.offsetWidth + 2}px`,
-            // style={{
-            //   width: `calc(100% - ${navBarSize?.size}px)`,
-            //   [navBarSize?.marginDirection]: `${navBarSize?.size}px`,
-            // }}
+            // className="gap-32 h-full w-screen z-40 fixed right-0 top-0"
+            className="h-full w-full fixed z-40"
           >
             <SortableContext
               items={addedContent
@@ -494,15 +608,24 @@ export default function Page() {
                     }}
                     ref={draggableRef}
                   >
+                    <button
+                      className="p-1 bg-red-900 z-10"
+                      onClick={() =>
+                        updateCompDraggable(component.id, !component.disabled)
+                      }
+                    >
+                      Disable
+                    </button>
+
                     {component.dnd !== "Droppable" ? (
                       <>
                         {/* TODO Move the sortable up, so that the collision works better? */}
                         <Sortable
                           id={component.id}
-                          key={component.id}
                           position={component.position}
                           screenSize={screenSize}
                           className="flex z-40 absolute"
+                          disabled={component.disabled}
                         >
                           <DynamicElement
                             tag={component.tag}
@@ -532,7 +655,11 @@ export default function Page() {
               {addedContent
                 .filter((item) => item?.id === draggingComponentId)
                 .map((item) => (
-                  <div key={item.id} className="w-full h-screen">
+                  <div
+                    key={item.id}
+                    // className="w-full h-screen"
+                    className={`${item.positionClass}`}
+                  >
                     <DynamicElement
                       key={item.id}
                       tag={item.tag}

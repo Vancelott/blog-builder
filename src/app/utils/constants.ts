@@ -29,6 +29,7 @@ export const elements: IElement[] = [
     placeholder: "Text Area",
     dnd: "Draggable",
     isDropped: false,
+    disabled: false,
     parentId: null,
     gridId: null,
     position: { x: 0, y: 0 },
@@ -46,8 +47,16 @@ export const elements: IElement[] = [
     isDropped: false,
     parentId: null,
     gridId: null,
-    position: { x: 0, y: 0 },
-    size: { height: 0, width: 0 },
+    position: { x: 0, y: 0, placement: "" },
+    // TODO rename to resize and delta?
+    size: {
+      height: 100 + "vh",
+      width: 325,
+      deltaHeight: 0,
+      deltaWidth: 0,
+      minHeight: 0,
+      minWidth: 0,
+    },
   },
   {
     id: null,
@@ -62,6 +71,14 @@ export const elements: IElement[] = [
     isDropped: false,
     parentId: null,
     gridId: null,
-    position: { x: 0, y: 0 },
+    position: { x: 0, y: 0, placement: "Top" },
+    size: {
+      height: 128,
+      width: 100 + "vw",
+      deltaHeight: 0,
+      deltaWidth: 0,
+      minHeight: "64px",
+      minWidth: "100vw",
+    },
   },
 ];
