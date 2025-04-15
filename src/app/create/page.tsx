@@ -1,7 +1,7 @@
 "use client";
 
 import { DynamicElement } from "@/app/ui/create/dynamicElement";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { IElement } from "@/app/types/index";
 import { createPage } from "@/app/lib/data";
 import {
@@ -18,7 +18,7 @@ import { createSnapModifier } from "@dnd-kit/modifiers";
 import { Draggable } from "@/app/ui/create/draggable";
 import { Droppable } from "@/app/ui/create/droppable";
 import { Sortable } from "@/app/ui/create/sortable";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useMemo } from "react";
 import {
   SortableContext,
   rectSwappingStrategy,
@@ -28,6 +28,7 @@ import {
 } from "@dnd-kit/sortable";
 import { elements, styles } from "@/app/utils/constants";
 import { Resizable } from "re-resizable";
+import { MeasuringStrategy } from "@dnd-kit/core";
 
 export default function Page() {
   // TODO add default content / create a new state variable for the default content (if you think there should be such)
@@ -51,10 +52,8 @@ export default function Page() {
   const [parentMargin, setParentMargin] = useState({});
 
   const navBarSizeRef = useRef<HTMLDivElement>(null);
-  // const headerRef = useRef<HTMLDivElement>(null);
   const parentComponentsRef = useRef(null);
   const draggableRef = useRef<HTMLDivElement>(null);
-  // const componentRefs = useRef<Map<string, HTMLDivElement>>({});
   const componentRefs = useRef<Map<string, HTMLDivElement>>({});
 
   const mouseSensor = useSensor(MouseSensor, {
@@ -100,7 +99,7 @@ export default function Page() {
         marginDirection: "marginLeft",
       });
     }
-    getParentMargin();
+    updateParentMargin();
   }, [posState]);
 
   useEffect(() => {
@@ -182,7 +181,7 @@ export default function Page() {
         return component;
       });
     });
-    await getParentMargin();
+    await updateParentMargin();
   };
 
   const handleSubmit = async (elementId: number) => {
@@ -201,7 +200,7 @@ export default function Page() {
       await handlePositionChange("Left"); // default value
     }
 
-    await getParentMargin();
+    await updateParentMargin();
     setShowSelect(false);
   };
 
@@ -388,12 +387,11 @@ export default function Page() {
             },
           };
         }
-        console.log("component", component);
         return component;
       });
     });
     setTempSizeDelta({ height: 0, width: 0, id: null });
-    getParentMargin();
+    updateParentMargin();
   };
 
   const updateCompDraggable = (id, value) => {
@@ -405,6 +403,7 @@ export default function Page() {
             disabled: value,
           };
         }
+        return component;
       });
     });
   };
@@ -435,9 +434,7 @@ export default function Page() {
     return handles[componentPosition];
   };
 
-  const getParentMargin = () => {
-    // const components = parentComponentsRef.current?.children;
-
+  const updateParentMargin = () => {
     setParentMargin({});
 
     const marginsToApply = {
@@ -446,28 +443,6 @@ export default function Page() {
       marginLeft: 0,
       marginRight: 0,
     };
-
-    // // for (const item of components) {
-    // for (const item in componentRefs.current) {
-    //   console.log(componentRefs);
-    //   console.log(item);
-    //   // const compInfo = item.getBoundingClientRect();
-    //   // if (compInfo.x === 0 && compInfo.y === 0) {
-    //   if (item.x === 0 && item.y === 0) {
-    //     console.log("item.firstChild.offsetWidth", item.firstChild.offsetWidth);
-    //     if (item.firstChild.offsetWidth < item.firstChild.offsetHeight) {
-    //       marginsToApply["marginLeft"] += item.firstChild.offsetWidth + 1;
-    //     } else {
-    //       marginsToApply["marginTop"] += item.firstChild.offsetHeight + 1;
-    //     }
-    //   } else {
-    //     if (item.firstChild.offsetWidth < item.firstChild.offsetHeight) {
-    //       marginsToApply["marginRight"] += item.firstChild.offsetWidth + 1;
-    //     } else {
-    //       marginsToApply["marginBottom"] += item.firstChild.offsetHeight + 1;
-    //     }
-    //   }
-    // }
 
     Object.entries(componentRefs.current).forEach(([id, element]) => {
       if (element.firstChild.offsetLeft === 0 && element.firstChild.offsetTop === 0) {
@@ -488,6 +463,118 @@ export default function Page() {
     setParentMargin(marginsToApply);
   };
 
+  const findComponent = useCallback(() => {
+    if (tempSizeDelta.id == null) {
+      return;
+    }
+
+    const currentResizingComp = addedContent.find((item) => item.id === tempSizeDelta.id);
+    return currentResizingComp;
+  }, [addedContent, tempSizeDelta.id]);
+
+  const roughlyNearbyComponents = useMemo(() => {
+    if (tempSizeDelta.id !== null) {
+      const currentResizingComp = findComponent();
+      const nearbyDistance = 200;
+
+      const nearbyComponents = addedContent.filter(
+        (item) =>
+          currentResizingComp.position.x < item.position.x + item.size.width &&
+          currentResizingComp.position.x +
+            currentResizingComp.size.width +
+            nearbyDistance >
+            item.position.x &&
+          currentResizingComp.position.y < item.position.y + item.size.height &&
+          currentResizingComp.position.y +
+            currentResizingComp.size.height +
+            nearbyDistance >
+            item.position.y &&
+          item.id !== currentResizingComp.id
+      );
+      return nearbyComponents;
+    }
+  }, [addedContent, findComponent, tempSizeDelta.id]);
+
+  const isResizingCompColliding = useCallback(() => {
+    const { height: heightDelta, width: widthDelta } = tempSizeDelta;
+    const currentResizingComp = findComponent();
+
+    if (roughlyNearbyComponents.length < 2 || !currentResizingComp) {
+      return;
+    }
+
+    const collidingComponents = roughlyNearbyComponents.filter(
+      (item) =>
+        currentResizingComp.position.x < item.position.x + item.size.width &&
+        currentResizingComp.position.x + currentResizingComp.size.width + widthDelta >
+          item.position.x &&
+        currentResizingComp.position.y < item.position.y + item.size.height &&
+        currentResizingComp.position.y + currentResizingComp.size.height + heightDelta >
+          item.position.y &&
+        item.id !== currentResizingComp.id
+    );
+
+    return collidingComponents;
+  }, [findComponent, roughlyNearbyComponents, tempSizeDelta]);
+
+  useEffect(() => {
+    const { height: heightDelta, width: widthDelta, id: idDelta } = tempSizeDelta;
+
+    if (idDelta !== null) {
+      const currentResizingComp = findComponent();
+      const collidingComponents = isResizingCompColliding();
+
+      if (
+        !currentResizingComp ||
+        (collidingComponents && collidingComponents.length < 1)
+      ) {
+        return;
+      }
+
+      const interval = setInterval(() => {
+        if (collidingComponents) {
+          setAddedContent((prevAddedContent) => {
+            return prevAddedContent.map((item) => {
+              const isColliding = collidingComponents.find((comp) => comp.id === item.id);
+
+              if (isColliding) {
+                const deltaX = Math.max(
+                  0,
+                  Math.min(
+                    currentResizingComp.position.x +
+                      currentResizingComp.size.width +
+                      widthDelta,
+                    item.position.x + item.size.width
+                  ) - Math.max(currentResizingComp.position.x, item.position.x)
+                );
+                const deltaY = Math.max(
+                  0,
+                  Math.min(
+                    currentResizingComp.position.y +
+                      currentResizingComp.size.height +
+                      heightDelta,
+                    item.position.y + item.size.height
+                  ) - Math.max(currentResizingComp.position.y, item.position.y)
+                );
+
+                return {
+                  ...item,
+                  position: {
+                    ...item.position,
+                    x: item.position.x + (deltaX < deltaY ? deltaX : 0),
+                    y: item.position.y + (deltaY < deltaX ? deltaY : 0),
+                  },
+                };
+              }
+              return item;
+            });
+          });
+        }
+      }, 50);
+      return () => clearInterval(interval);
+    }
+  }, [findComponent, isResizingCompColliding, tempSizeDelta]);
+
   return (
     // TODO remove flex-col?
     // <div className="flex h-screen w-full relative overflow-hidden">-
@@ -498,6 +585,7 @@ export default function Page() {
         onDragCancel={handleDragCancel}
         sensors={sensors}
         modifiers={[snapToGridModifier]}
+        layoutMeasuring={{ strategy: MeasuringStrategy.Always }}
       >
         {showGrid && (
           <div
@@ -530,7 +618,6 @@ export default function Page() {
                       height: component.size.height,
                     }}
                     onResizeStop={(e, direction, ref, d) => {
-                      console.log("ref", ref.style);
                       updateCompSize(component.id, d);
                     }}
                     onResize={(e, direction, ref, d) => {
@@ -581,7 +668,8 @@ export default function Page() {
           <Droppable
             id={"mainGrid"}
             // className="gap-32 h-full w-screen z-40 fixed right-0 top-0"
-            className="h-full w-full fixed z-40"
+            // TODO add/remove fixed?
+            className="h-full w-full z-40"
           >
             <SortableContext
               items={addedContent
@@ -594,7 +682,7 @@ export default function Page() {
                 .map((component) => (
                   <div
                     key={component.id}
-                    className="z-5 absolute"
+                    className="z-5 absolute border-2 border-purple-500"
                     style={{
                       transform: `translate3d(${
                         component.position.x + screenSize.deltaX < 0
@@ -624,21 +712,45 @@ export default function Page() {
                           id={component.id}
                           position={component.position}
                           screenSize={screenSize}
-                          className="flex z-40 absolute"
+                          className="flex z-40 absolute "
                           disabled={component.disabled}
                         >
-                          <DynamicElement
-                            tag={component.tag}
-                            id={component.id}
-                            element={component}
-                            gridId={component.gridId}
-                            handleInputChange={handleInputChange}
-                            previewMode={previewMode}
-                            input={component.input}
-                          />
-                          <p>x: {component.position.x}</p>
-                          <p>y: {component.position.y}</p>
-                          <p>id: {component.id}</p>
+                          <Resizable
+                            // style={{
+                            //   display: "flex",
+                            //   alignItems: "center",
+                            //   justifyContent: "center",
+                            //   flexDirection: "column",
+                            // }}
+                            size={{
+                              width: component.size.width,
+                              height: component.size.height,
+                            }}
+                            onResizeStop={(e, direction, ref, d) => {
+                              updateCompSize(component.id, d);
+                            }}
+                            onResize={(e, direction, ref, d) => {
+                              setTempSizeDelta({
+                                width: d.width,
+                                height: d.height,
+                                id: component.id,
+                              });
+                            }}
+                            className="outline-4 outline-purple-300"
+                          >
+                            <DynamicElement
+                              tag={component.tag}
+                              id={component.id}
+                              element={component}
+                              gridId={component.gridId}
+                              handleInputChange={handleInputChange}
+                              previewMode={previewMode}
+                              input={component.input}
+                            />
+                            <p>x: {component.position.x}</p>
+                            <p>y: {component.position.y}</p>
+                            <p>id: {component.id}</p>
+                          </Resizable>
                         </Sortable>
                       </>
                     ) : null}
@@ -646,19 +758,26 @@ export default function Page() {
                 ))}
             </SortableContext>
             <DragOverlay
-              className="outline outline-green-300 outline-offset-4"
+              className="outline outline-green-300"
               dropAnimation={{
                 duration: 300,
                 // easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)",
               }}
             >
               {addedContent
-                .filter((item) => item?.id === draggingComponentId)
+                .filter(
+                  (item) => item?.id === draggingComponentId && !item.disabled
+                  // item.id !== itemBeingResized
+                )
                 .map((item) => (
                   <div
                     key={item.id}
                     // className="w-full h-screen"
-                    className={`${item.positionClass}`}
+                    className={`${item.positionClass} `}
+                    style={{
+                      width: item.size.width,
+                      height: item.size.height,
+                    }}
                   >
                     <DynamicElement
                       key={item.id}

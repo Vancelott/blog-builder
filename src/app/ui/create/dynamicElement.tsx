@@ -14,47 +14,6 @@ import { CreateComponents } from "@/app/utils/constants";
 export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
   const [textAreaInput, setTextAreaInput] = useState<string>("");
 
-  // TODO Delete?
-  // if (props.element.gridId && props.childElements?.length > 0) {
-  //   return (
-  //     <div>
-  //       <p className="text-2xl text-yellow-400">{positionChange}</p>
-  //       {Components.map((mappedComponent) => {
-  //         if (mappedComponent.tag === props.element.tag) {
-  //           const Component = mappedComponent.component || "div";
-  //           return (
-  //             <div key={props.element.id}>
-  //               <Component handleInputChange={props.handleInputChange}>
-  //                 {props.childElements &&
-  //                   props.childElements.map((item) => {
-  //                     const childComponentDef = Components.find(
-  //                       (component) => component.tag === item.tag
-  //                     );
-  //                     if (childComponentDef) {
-  //                       const ChildComponent = childComponentDef.component;
-  //                       return;
-  //                       <div>
-  //                         <ChildComponent
-  //                           handleInputChange={props.handleInputChange}
-  //                           key={item.id}
-  //                           // style={{
-  //                           //   left: `${props.element.position.left}px`,
-  //                           //   right: `${props.element.position.right}px`,
-  //                           // }}
-  //                         />
-  //                       </div>;
-  //                     }
-  //                     return null;
-  //                   })}
-  //               </Component>
-  //             </div>
-  //           );
-  //         }
-  //         return null;
-  //       })}
-  //     </div>
-  //   );
-  // }
   if (props.element.gridId) {
     return (
       <div>
@@ -67,16 +26,15 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
                   <p>{props.input}</p>
                 </div>
               );
-            } else {
-              return (
-                <div key={props.element.id}>
-                  <Component
-                    handleInputChange={props.handleInputChange}
-                    id={props.element.id}
-                  />
-                </div>
-              );
             }
+            return (
+              <div key={props.element.id}>
+                <Component
+                  handleInputChange={props.handleInputChange}
+                  id={props.element.id}
+                />
+              </div>
+            );
           }
           return null;
         })}

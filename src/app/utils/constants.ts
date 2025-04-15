@@ -33,6 +33,14 @@ export const elements: IElement[] = [
     parentId: null,
     gridId: null,
     position: { x: 0, y: 0 },
+    size: {
+      height: 200,
+      width: 200,
+      deltaHeight: 0,
+      deltaWidth: 0,
+      minHeight: 0,
+      minWidth: 0,
+    },
   },
   {
     id: null,
@@ -48,7 +56,7 @@ export const elements: IElement[] = [
     parentId: null,
     gridId: null,
     position: { x: 0, y: 0, placement: "" },
-    // TODO rename to resize and delta?
+    // TODO rename to resize?
     size: {
       height: 100 + "vh",
       width: 325,
