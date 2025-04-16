@@ -136,12 +136,13 @@ export default function Page() {
       },
       {
         position: "Bottom",
-        className: "inset-x-0 bottom-0 h-28 w-screen place-items-start px-8 mt-20",
+        className:
+          "flex-row inset-x-0 bottom-0 h-28 w-screen place-items-start px-8 mt-20",
         size: { minWidth: "100vh", minHeight: "48px", height: "128px", width: "100vw" },
       },
       {
         position: "Top",
-        className: "inset-x-0 top-0 h-28 w-screen place-items-start px-8 mb-20",
+        className: "flex-row inset-x-0 top-0 h-28 w-screen place-items-start px-8 mb-20",
         size: {
           minWidth: "100vh",
           minHeight: "48px",
@@ -235,56 +236,27 @@ export default function Page() {
     const elementId = active.id as string;
     const newStatus = over.id as string | number;
     const draggedComponent = addedContent.find((item) => item.id === elementId);
-
-    const navBarWidth =
-      navBarSizeRef?.current?.offsetWidth < navBarSizeRef?.current?.offsetHeight
-        ? navBarSizeRef?.current?.offsetWidth
-        : 0;
-    const navBarHeight =
-      navBarSizeRef?.current?.offsetHeight < navBarSizeRef?.current?.offsetWidth
-        ? navBarSizeRef?.current?.offsetHeight
-        : 0;
+    const isParentComponent = addedContent.find(
+      (component) => component.id == newStatus && component.dnd == "Droppable"
+    );
+    const { marginTop, marginBottom, marginLeft, marginRight } = parentMargin;
 
     if (
-      elementId === newStatus &&
-      (delta.x +
-        draggedComponent.position.x +
-        draggableRef.current.offsetWidth * 0.98 +
-        navBarWidth >
-        window.innerWidth ||
-        delta.y +
-          draggedComponent.position.y +
-          draggableRef.current.offsetHeight * 0.98 +
-          navBarHeight >
-          window.innerHeight)
+      delta.x + draggedComponent.position.x + draggedComponent.size.width * 0.9 >
+        screenSize.width - (marginLeft + marginRight) ||
+      delta.y + draggedComponent.position.y + draggedComponent.size.height * 0.9 >
+        screenSize.height - (marginTop + marginBottom)
     ) {
       console.log("Outside of parent element");
       return;
     }
 
-    const isParentComponent = addedContent.find(
-      (component) => component.id == newStatus && component.dnd == "Droppable"
-    );
-
-    // TODO this still does not work when swapping component, due to `over` being the other component, which results in its height/width being less than the other params
-    // if (
-    //   elementId !== newStatus &&
-    //   !isParentComponent &&
-    //   (delta.x + draggedComponent.position.x + draggableRef.current.offsetWidth * 0.98 >
-    //     over.rect.width ||
-    //     delta.y + draggedComponent.position.y + draggableRef.current.offsetHeight * 0.98 >
-    //       over.rect.height)
-    // ) {
-    //   // TODO instead of returning, should the component be placed at the max value of whichever axis overflowed?
-    //   console.log("Outside of parent element");
-    //   return;
-    // }
-
-    // TODO should the user be allowed to place components just outside of the window's width/height?
     if (
-      (newStatus === undefined && delta.x + draggedComponent.position.x < 0) ||
-      delta.y + draggedComponent.position.y < 0
+      !isParentComponent &&
+      (delta.x + draggedComponent.position.x < 0 ||
+        delta.y + draggedComponent.position.y < 0)
     ) {
+      console.log("Outside of parent element");
       return;
     }
 
@@ -444,19 +416,25 @@ export default function Page() {
       marginRight: 0,
     };
 
+    const spaceForHandles = 1;
+
     Object.entries(componentRefs.current).forEach(([id, element]) => {
-      if (element.firstChild.offsetLeft === 0 && element.firstChild.offsetTop === 0) {
+      if (element.firstChild.offsetLeft <= 0 && element.firstChild.offsetTop <= 0) {
         if (element.firstChild.offsetWidth < element.firstChild.offsetHeight) {
-          marginsToApply["marginLeft"] += element.firstChild.offsetWidth + 1;
+          marginsToApply["marginLeft"] +=
+            element.firstChild.offsetWidth + spaceForHandles;
         } else {
-          marginsToApply["marginTop"] += element.firstChild.offsetHeight + 1;
+          marginsToApply["marginTop"] +=
+            element.firstChild.offsetHeight + spaceForHandles;
         }
       } else {
         if (element.firstChild.offsetWidth < element.firstChild.offsetHeight) {
           // TODO the main grid needs right-0 top-0 (or bottom-0 depends) for these to work
-          marginsToApply["marginRight"] += element.firstChild.offsetWidth + 1;
+          marginsToApply["marginRight"] +=
+            element.firstChild.offsetWidth + spaceForHandles;
         } else {
-          marginsToApply["marginBottom"] += element.firstChild.offsetHeight + 1;
+          marginsToApply["marginBottom"] +=
+            element.firstChild.offsetHeight + spaceForHandles;
         }
       }
     });
@@ -583,6 +561,8 @@ export default function Page() {
         onDragEnd={handleDragEnd}
         onDragStart={handleDragStart}
         onDragCancel={handleDragCancel}
+        // TODO use if the "over" is needed in the DragOverlay, while dragging a comp
+        // onDragMove={(e) => console.log(e)}
         sensors={sensors}
         modifiers={[snapToGridModifier]}
         layoutMeasuring={{ strategy: MeasuringStrategy.Always }}
@@ -774,10 +754,10 @@ export default function Page() {
                     key={item.id}
                     // className="w-full h-screen"
                     className={`${item.positionClass} `}
-                    style={{
-                      width: item.size.width,
-                      height: item.size.height,
-                    }}
+                    // style={{
+                    //   width: item.size.width,
+                    //   height: item.size.height,
+                    // }}
                   >
                     <DynamicElement
                       key={item.id}
