@@ -41,10 +41,10 @@ export default function Page() {
   const [navBarSize, setNavBarSize] = useState({});
   const [posState, setPosState] = useState<string>();
   const [screenSize, setScreenSize] = useState({
-    width: window?.innerWidth,
-    height: window?.innerHeight,
-    initialWidth: window?.innerWidth,
-    initialHeight: window?.innerHeight,
+    width: 0,
+    height: 0,
+    initialWidth: 0,
+    initialHeight: 0,
     deltaX: 0,
     deltaY: 0,
   });
@@ -345,6 +345,8 @@ export default function Page() {
   const updateCompSize = (id, d) => {
     const { height, width } = d;
 
+    // TODO check if the component is colliding with another component, if so, update its size to the maximum possible one
+
     setAddedContent((prevAddedContent) => {
       return prevAddedContent.map((component) => {
         if (component.id === id) {
@@ -441,7 +443,7 @@ export default function Page() {
     setParentMargin(marginsToApply);
   };
 
-  const findComponent = useCallback(() => {
+  const findResizingComponent = useCallback(() => {
     if (tempSizeDelta.id == null) {
       return;
     }
@@ -451,56 +453,87 @@ export default function Page() {
   }, [addedContent, tempSizeDelta.id]);
 
   const roughlyNearbyComponents = useMemo(() => {
-    if (tempSizeDelta.id !== null) {
-      const currentResizingComp = findComponent();
-      const nearbyDistance = 200;
-
-      const nearbyComponents = addedContent.filter(
-        (item) =>
-          currentResizingComp.position.x < item.position.x + item.size.width &&
-          currentResizingComp.position.x +
-            currentResizingComp.size.width +
-            nearbyDistance >
-            item.position.x &&
-          currentResizingComp.position.y < item.position.y + item.size.height &&
-          currentResizingComp.position.y +
-            currentResizingComp.size.height +
-            nearbyDistance >
-            item.position.y &&
-          item.id !== currentResizingComp.id
-      );
-      return nearbyComponents;
-    }
-  }, [addedContent, findComponent, tempSizeDelta.id]);
-
-  const isResizingCompColliding = useCallback(() => {
-    const { height: heightDelta, width: widthDelta } = tempSizeDelta;
-    const currentResizingComp = findComponent();
-
-    if (roughlyNearbyComponents.length < 2 || !currentResizingComp) {
+    const currentResizingComp = findResizingComponent();
+    if (!currentResizingComp) {
       return;
     }
+    const nearbyDistance = 200;
 
-    const collidingComponents = roughlyNearbyComponents.filter(
+    const nearbyComponents = addedContent.filter(
       (item) =>
         currentResizingComp.position.x < item.position.x + item.size.width &&
-        currentResizingComp.position.x + currentResizingComp.size.width + widthDelta >
+        currentResizingComp.position.x + currentResizingComp.size.width + nearbyDistance >
           item.position.x &&
         currentResizingComp.position.y < item.position.y + item.size.height &&
-        currentResizingComp.position.y + currentResizingComp.size.height + heightDelta >
+        currentResizingComp.position.y +
+          currentResizingComp.size.height +
+          nearbyDistance >
           item.position.y &&
         item.id !== currentResizingComp.id
     );
+    return nearbyComponents;
+  }, [addedContent, findResizingComponent]);
 
-    return collidingComponents;
-  }, [findComponent, roughlyNearbyComponents, tempSizeDelta]);
+  const isResizingCompColliding = useCallback(
+    (currentResizingComp) => {
+      const { height: heightDelta, width: widthDelta } = tempSizeDelta;
+
+      if (roughlyNearbyComponents.length < 1) {
+        return;
+      }
+
+      const collidingComponents = roughlyNearbyComponents.filter(
+        (item) =>
+          currentResizingComp.position.x < item.position.x + item.size.width &&
+          currentResizingComp.position.x + currentResizingComp.size.width + widthDelta >
+            item.position.x &&
+          currentResizingComp.position.y < item.position.y + item.size.height &&
+          currentResizingComp.position.y + currentResizingComp.size.height + heightDelta >
+            item.position.y &&
+          item.id !== currentResizingComp.id
+      );
+      return collidingComponents;
+    },
+    [roughlyNearbyComponents, tempSizeDelta]
+  );
+
+  const isCompColliding = useCallback(
+    (comp, deltaX, deltaY, currentResizingComp) => {
+      const collidingComponents = addedContent.filter(
+        (item) =>
+          comp.position.x < item.position.x + item.size.width &&
+          comp.position.x + comp.size.width + deltaX > item.position.x &&
+          comp.position.y < item.position.y + item.size.height &&
+          comp.position.y + comp.size.height + deltaY > item.position.y &&
+          item.id !== comp.id &&
+          item.id !== currentResizingComp
+      );
+      return collidingComponents;
+    },
+    [addedContent]
+  );
+
+  const shouldResizeOrMove = useCallback(
+    (item, deltaX, deltaY) => {
+      const { marginTop, marginBottom, marginLeft, marginRight } = parentMargin;
+      const { width: screenWidth, height: screenHeight } = screenSize;
+
+      return (
+        item.position.x + item.size.width + deltaX >
+          screenWidth - (marginLeft + marginRight) ||
+        item.position.y + item.size.height + deltaY >
+          screenHeight - (marginTop + marginBottom)
+      );
+    },
+    [parentMargin, screenSize]
+  );
 
   useEffect(() => {
     const { height: heightDelta, width: widthDelta, id: idDelta } = tempSizeDelta;
 
     if (idDelta !== null) {
-      const currentResizingComp = findComponent();
-      const collidingComponents = isResizingCompColliding();
+      const currentResizingComp = findResizingComponent();
+      const collidingComponents = isResizingCompColliding(currentResizingComp);
 
       if (
         !currentResizingComp ||
@@ -509,49 +542,134 @@ export default function Page() {
         return;
       }
 
-      const interval = setInterval(() => {
-        if (collidingComponents) {
-          setAddedContent((prevAddedContent) => {
-            return prevAddedContent.map((item) => {
-              const isColliding = collidingComponents.find((comp) => comp.id === item.id);
+      // const interval = setInterval(() => {
+      if (collidingComponents) {
+        setAddedContent((prevAddedContent) => {
+          const updatedContent = [...prevAddedContent];
 
-              if (isColliding) {
-                const deltaX = Math.max(
-                  0,
-                  Math.min(
-                    currentResizingComp.position.x +
-                      currentResizingComp.size.width +
-                      widthDelta,
-                    item.position.x + item.size.width
-                  ) - Math.max(currentResizingComp.position.x, item.position.x)
-                );
-                const deltaY = Math.max(
-                  0,
-                  Math.min(
-                    currentResizingComp.position.y +
-                      currentResizingComp.size.height +
-                      heightDelta,
-                    item.position.y + item.size.height
-                  ) - Math.max(currentResizingComp.position.y, item.position.y)
-                );
+          for (let i = 0; i < updatedContent.length; i++) {
+            const item = updatedContent[i];
+            const isColliding = collidingComponents.find((comp) => comp.id === item.id);
 
-                return {
-                  ...item,
-                  position: {
-                    ...item.position,
-                    x: item.position.x + (deltaX < deltaY ? deltaX : 0),
-                    y: item.position.y + (deltaY < deltaX ? deltaY : 0),
-                  },
-                };
+            if (isColliding) {
+              const deltaX = Math.max(
+                0,
+                Math.min(
+                  currentResizingComp.position.x +
+                    currentResizingComp.size.width +
+                    widthDelta,
+                  item.position.x + item.size.width
+                ) - Math.max(currentResizingComp.position.x, item.position.x)
+              );
+              const deltaY = Math.max(
+                0,
+                Math.min(
+                  currentResizingComp.position.y +
+                    currentResizingComp.size.height +
+                    heightDelta,
+                  item.position.y + item.size.height
+                ) - Math.max(currentResizingComp.position.y, item.position.y)
+              );
+
+              const isCollidingWithOtherComps = isCompColliding(
+                item,
+                deltaX,
+                deltaY,
+                currentResizingComp
+              );
+              let shouldBreakLoop = false;
+
+              if (isCollidingWithOtherComps) {
+                isCollidingWithOtherComps.forEach((otherComp) => {
+                  const index = updatedContent.findIndex((c) => c.id === otherComp.id);
+                  if (index !== -1) {
+                    const collidingComp = updatedContent[index];
+
+                    const resizeOrMove = shouldResizeOrMove(
+                      collidingComp,
+                      deltaX,
+                      deltaY
+                    );
+
+                    if (
+                      resizeOrMove &&
+                      collidingComp.size.width + deltaX > collidingComp.size.minWidth
+                    ) {
+                      shouldBreakLoop = true;
+                      return updatedContent[index];
+                    }
+                    updatedContent[index] = {
+                      ...collidingComp,
+                      size: {
+                        ...collidingComp.size,
+                        width: resizeOrMove
+                          ? collidingComp.size.width - (deltaX < deltaY ? deltaX : 0)
+                          : collidingComp.size.width,
+                        height: resizeOrMove
+                          ? collidingComp.size.height - (deltaY < deltaX ? deltaY : 0)
+                          : collidingComp.size.height,
+                      },
+                      position: {
+                        ...collidingComp.position,
+                        x: !resizeOrMove
+                          ? collidingComp.position.x + (deltaX < deltaY ? deltaX : 0)
+                          : collidingComp.position.x,
+                        y: !resizeOrMove
+                          ? collidingComp.position.y + (deltaY < deltaX ? deltaY : 0)
+                          : collidingComp.position.y,
+                      },
+                    };
+                  }
+                });
               }
-              return item;
-            });
-          });
-        }
-      }, 50);
-      return () => clearInterval(interval);
+
+              if (shouldBreakLoop) {
+                break;
+              }
+
+              const resizeOrMove = shouldResizeOrMove(item, deltaX, deltaY);
+
+              if (resizeOrMove && item.size.width + deltaX > item.size.minWidth) {
+                return updatedContent[i];
+              }
+
+              updatedContent[i] = {
+                ...item,
+                size: {
+                  ...item.size,
+                  width: resizeOrMove
+                    ? item.size.width - (deltaX < deltaY ? deltaX : 0)
+                    : item.size.width,
+                  height: resizeOrMove
+                    ? item.size.height - (deltaY < deltaX ? deltaY : 0)
+                    : item.size.height,
+                },
+                position: {
+                  ...item.position,
+                  x: !resizeOrMove
+                    ? item.position.x + (deltaX < deltaY ? deltaX : 0)
+                    : item.position.x,
+                  y: !resizeOrMove
+                    ? item.position.y + (deltaY < deltaX ? deltaY : 0)
+                    : item.position.y,
+                },
+              };
+            }
+          }
+          return updatedContent;
+        });
+      }
     }
-  }, [findComponent, isResizingCompColliding, tempSizeDelta]);
+
+    // }, 50);
+    // return () => clearInterval(interval);
+  }, [
+    findResizingComponent,
+    isCompColliding,
+    isResizingCompColliding,
+    shouldResizeOrMove,
+    tempSizeDelta,
+  ]);
 
   return (
     // TODO remove flex-col?
