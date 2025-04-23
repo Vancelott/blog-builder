@@ -41,10 +41,10 @@ export default function Page() {
   const [navBarSize, setNavBarSize] = useState({});
   const [posState, setPosState] = useState<string>();
   const [screenSize, setScreenSize] = useState({
-    width: 0,
-    height: 0,
-    initialWidth: 0,
-    initialHeight: 0,
+    width: window?.innerWidth,
+    height: window?.innerHeight,
+    initialWidth: window?.innerWidth,
+    initialHeight: window?.innerHeight,
     deltaX: 0,
     deltaY: 0,
   });
@@ -448,7 +448,7 @@ export default function Page() {
       return;
     }
 
-    const currentResizingComp = addedContent.find((item) => item.id === tempSizeDelta.id);
+    const currentResizingComp = addedContent.find((item) => item.id == tempSizeDelta.id);
     return currentResizingComp;
   }, [addedContent, tempSizeDelta.id]);
 
@@ -517,12 +517,13 @@ export default function Page() {
     (item, deltaX, deltaY) => {
       const { marginTop, marginBottom, marginLeft, marginRight } = parentMargin;
       const { width: screenWidth, height: screenHeight } = screenSize;
-
       return (
-        item.position.x + item.size.width + deltaX >
-          screenWidth - (marginLeft + marginRight) ||
-        item.position.y + item.size.height + deltaY >
-          screenHeight - (marginTop + marginBottom)
+        (item.position.x + item.size.width + deltaX >
+          screenWidth - (marginLeft + marginRight) &&
+          deltaX < deltaY) ||
+        (item.position.y + item.size.height + deltaY >
+          screenHeight - (marginTop + marginBottom) &&
+          deltaY < deltaX)
       );
     },
     [parentMargin, screenSize]
@@ -546,6 +547,7 @@ export default function Page() {
       if (collidingComponents) {
         setAddedContent((prevAddedContent) => {
           const updatedContent = [...prevAddedContent];
+          let didChange = false;
 
           for (let i = 0; i < updatedContent.length; i++) {
             const item = updatedContent[i];
@@ -577,7 +579,7 @@ export default function Page() {
                 deltaY,
                 currentResizingComp
               );
-              let shouldBreakLoop = false;
+              let shouldContinueLoop = false;
 
               if (isCollidingWithOtherComps) {
                 isCollidingWithOtherComps.forEach((otherComp) => {
@@ -595,9 +597,10 @@ export default function Page() {
                       resizeOrMove &&
                       collidingComp.size.width + deltaX > collidingComp.size.minWidth
                     ) {
-                      shouldBreakLoop = true;
-                      return updatedContent[index];
+                      shouldContinueLoop = true;
+                      return;
                     }
+
                     updatedContent[index] = {
                       ...collidingComp,
                       size: {
@@ -623,16 +626,15 @@ export default function Page() {
                 });
               }
 
-              if (shouldBreakLoop) {
-                break;
+              if (shouldContinueLoop) {
+                continue;
               }
 
               const resizeOrMove = shouldResizeOrMove(item, deltaX, deltaY);
 
               if (resizeOrMove && item.size.width + deltaX > item.size.minWidth) {
-                return updatedContent[i];
+                continue;
               }
-
               updatedContent[i] = {
                 ...item,
                 size: {
@@ -654,8 +656,10 @@ export default function Page() {
                     : item.position.y,
                 },
               };
+              didChange = true;
             }
           }
+          if (!didChange) return prevAddedContent;
           return updatedContent;
         });
       }
@@ -828,6 +832,12 @@ export default function Page() {
                               updateCompSize(component.id, d);
                             }}
                             onResize={(e, direction, ref, d) => {
+                              // setTempSizeDelta((prev) => {
+                              //   ...prev,
+                              //   prev.width = d.width,
+                              //   prev.height = d.height,
+                              //   prev.id = component.id
+                              // });
                               setTempSizeDelta({
                                 width: d.width,
                                 height: d.height,
