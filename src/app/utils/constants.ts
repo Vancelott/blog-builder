@@ -38,8 +38,8 @@ export const elements: IElement[] = [
       width: 200,
       deltaHeight: 0,
       deltaWidth: 0,
-      minHeight: 0,
-      minWidth: 0,
+      minHeight: 50,
+      minWidth: 50,
     },
   },
   {

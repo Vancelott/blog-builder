@@ -27,7 +27,7 @@ import {
   arraySwap,
 } from "@dnd-kit/sortable";
 import { elements, styles } from "@/app/utils/constants";
-import { Resizable } from "re-resizable";
+import { Resizable, ResizeCallback } from "re-resizable";
 import { MeasuringStrategy } from "@dnd-kit/core";
 
 export default function Page() {
@@ -342,33 +342,7 @@ export default function Page() {
     });
   };
 
-  const updateCompSize = (id, d) => {
-    const { height, width } = d;
-
-    // TODO check if the component is colliding with another component, if so, update its size to the maximum possible one
-
-    setAddedContent((prevAddedContent) => {
-      return prevAddedContent.map((component) => {
-        if (component.id === id) {
-          return {
-            ...component,
-            size: {
-              ...component.size,
-              height: component.size.height + height,
-              width: component.size.width + width,
-              deltaHeight: component.size.deltaHeight + height,
-              deltaWidth: component.size.deltaWidth + width,
-            },
-          };
-        }
-        return component;
-      });
-    });
-    setTempSizeDelta({ height: 0, width: 0, id: null });
-    updateParentMargin();
-  };
-
-  const updateCompDraggable = (id, value) => {
+  const updateCompDraggable = (id: number, value: boolean) => {
     setAddedContent((prevAddedContent) => {
       return prevAddedContent.map((component) => {
         if (component.id === id) {
@@ -443,6 +417,75 @@ export default function Page() {
     setParentMargin(marginsToApply);
   };
 
+  const calculateDelta = (
+    resizingComp: IElement,
+    collidingComp: IElement,
+    resizingCompDelta: number,
+    pos: string
+  ) => {
+    if (pos == "X") {
+      return Math.max(
+        0,
+        Math.min(
+          resizingComp.position.x + resizingComp.size.width + resizingCompDelta,
+          collidingComp.position.x + collidingComp.size.width
+        ) - Math.max(resizingComp.position.x, collidingComp.position.x)
+      );
+    } else {
+      return Math.max(
+        0,
+        Math.min(
+          resizingComp.position.y + resizingComp.size.height + resizingCompDelta,
+          collidingComp.position.y + collidingComp.size.height
+        ) - Math.max(resizingComp.position.y, collidingComp.position.y)
+      );
+    }
+  };
+
+  const updateCompSize = (id: number, d: ResizeCallback.delta) => {
+    let { height: heightDelta, width: widthDelta } = d;
+    const resizingComp = findResizingComponent();
+    const collidingComponents = isResizingCompColliding(resizingComp);
+
+    if (collidingComponents) {
+      collidingComponents.forEach((item) => {
+        if (item.id !== id) {
+          const deltaX = Math.max(0, calculateDelta(resizingComp, item, widthDelta, "X"));
+          const deltaY = Math.max(
+            0,
+            calculateDelta(resizingComp, item, heightDelta, "Y")
+          );
+
+          // uses the smallest delta, as there's an issue that occurs when resizing a comp from its corner
+          widthDelta =
+            widthDelta < heightDelta && widthDelta > 0 ? widthDelta - deltaX : 0;
+          heightDelta =
+            heightDelta < widthDelta && heightDelta > 0 ? heightDelta - deltaY : 0;
+        }
+      });
+    }
+
+    setAddedContent((prevAddedContent) => {
+      return prevAddedContent.map((component) => {
+        if (component.id === id) {
+          return {
+            ...component,
+            size: {
+              ...component.size,
+              height: component.size.height + heightDelta,
+              width: component.size.width + widthDelta,
+              deltaHeight: component.size.deltaHeight + heightDelta,
+              deltaWidth: component.size.deltaWidth + widthDelta,
+            },
+          };
+        }
+        return component;
+      });
+    });
+    setTempSizeDelta({ height: 0, width: 0, id: null });
+    updateParentMargin();
+  };
+
   const findResizingComponent = useCallback(() => {
     if (tempSizeDelta.id == null) {
       return;
@@ -478,7 +521,7 @@ export default function Page() {
     (currentResizingComp) => {
       const { height: heightDelta, width: widthDelta } = tempSizeDelta;
 
-      if (roughlyNearbyComponents.length < 1) {
+      if (!roughlyNearbyComponents || roughlyNearbyComponents.length < 1) {
         return;
       }
 
@@ -514,9 +557,101 @@ export default function Page() {
   );
 
   const shouldResizeOrMove = useCallback(
-    (item, deltaX, deltaY) => {
+    (item, deltaX, deltaY, adjacentComp, currentResizingComp) => {
       const { marginTop, marginBottom, marginLeft, marginRight } = parentMargin;
       const { width: screenWidth, height: screenHeight } = screenSize;
+
+      const isOutOfScreen =
+        (item.position.x + item.size.width + deltaX >
+          screenWidth - (marginLeft + marginRight) &&
+          deltaX < deltaY) ||
+        (item.position.y + item.size.height + deltaY >
+          screenHeight - (marginTop + marginBottom) &&
+          deltaY < deltaX);
+
+      // original attempt
+      // if (adjacentComp) {
+      //   console.log("adjacentComp", adjacentComp);
+
+      //   const colliding = isCompColliding(item, deltaX, deltaY, currentResizingComp);
+      //   if (colliding.length > 0 && item.size.width - deltaX < item.size.minWidth) {
+      //     return null;
+      //   } else if (colliding.length > 0) {
+      //     return true;
+      //   } else if (!isOutOfScreen) {
+      //     return false;
+      //   } else {
+      //     return true;
+      //   }
+      // }
+
+      // if (adjacentComp) {
+      //   console.log("adjacentComp", adjacentComp);
+
+      //   const isOutOfScreen =
+      //     (adjacentComp.position.x + adjacentComp.size.width + deltaX >
+      //       screenWidth - (marginLeft + marginRight) &&
+      //       deltaX < deltaY) ||
+      //     (adjacentComp.position.y + adjacentComp.size.height + deltaY >
+      //       screenHeight - (marginTop + marginBottom) &&
+      //       deltaY < deltaX);
+      //   console.log("isOutOfScreen", isOutOfScreen);
+
+      //   const colliding = isCompColliding(item, deltaX, deltaY, currentResizingComp);
+      //   if (colliding.length > 0 && item.size.width - deltaX < item.size.minWidth) {
+      //     return null;
+      //   } else if (colliding.length > 0) {
+      //     return true;
+      //   } else if (!isOutOfScreen) {
+      //     return false;
+      //   } else {
+      //     return true;
+      //   }
+      // }
+
+      if (adjacentComp) {
+        console.log("adjacentComp", adjacentComp);
+
+        const isOutOfScreen =
+          (adjacentComp.position.x + adjacentComp.size.width + deltaX >
+            screenWidth - (marginLeft + marginRight) &&
+            deltaX < deltaY) ||
+          (adjacentComp.position.y + adjacentComp.size.height + deltaY >
+            screenHeight - (marginTop + marginBottom) &&
+            deltaY < deltaX);
+        console.log("isOutOfScreen", isOutOfScreen);
+
+        const colliding = isCompColliding(item, deltaX, deltaY, currentResizingComp);
+        if (colliding.length == 0) {
+          return false;
+        }
+
+        if (
+          (colliding.length > 0 && item.size.width - deltaX < item.size.minWidth) ||
+          item.size.height - deltaY < item.size.minHeight
+        ) {
+          return null;
+        } else if (colliding.length > 0) {
+          return true;
+        } else if (!isOutOfScreen) {
+          return false;
+        } else {
+          return true;
+        }
+      }
+
+      if (
+        item.size.width - deltaX < item.size.minWidth &&
+        ((item.position.x + item.size.width + deltaX >
+          screenWidth - (marginLeft + marginRight) &&
+          deltaX < deltaY) ||
+          (item.position.y + item.size.height + deltaY >
+            screenHeight - (marginTop + marginBottom) &&
+            deltaY < deltaX))
+      ) {
+        return null;
+      }
+
       return (
         (item.position.x + item.size.width + deltaX >
           screenWidth - (marginLeft + marginRight) &&
@@ -526,7 +661,7 @@ export default function Page() {
           deltaY < deltaX)
       );
     },
-    [parentMargin, screenSize]
+    [isCompColliding, parentMargin, screenSize]
   );
 
   useEffect(() => {
@@ -554,39 +689,33 @@ export default function Page() {
             const isColliding = collidingComponents.find((comp) => comp.id === item.id);
 
             if (isColliding) {
-              const deltaX = Math.max(
-                0,
-                Math.min(
-                  currentResizingComp.position.x +
-                    currentResizingComp.size.width +
-                    widthDelta,
-                  item.position.x + item.size.width
-                ) - Math.max(currentResizingComp.position.x, item.position.x)
-              );
-              const deltaY = Math.max(
-                0,
-                Math.min(
-                  currentResizingComp.position.y +
-                    currentResizingComp.size.height +
-                    heightDelta,
-                  item.position.y + item.size.height
-                ) - Math.max(currentResizingComp.position.y, item.position.y)
-              );
+              const deltaX = calculateDelta(currentResizingComp, item, widthDelta, "X");
+              const deltaY = calculateDelta(currentResizingComp, item, heightDelta, "Y");
 
               const isCollidingWithOtherComps = isCompColliding(
                 item,
                 deltaX,
                 deltaY,
-                currentResizingComp
+                currentResizingComp.id
               );
-              let shouldContinueLoop = false;
+              let availableDeltaX = 0;
+              let availableDeltaY = 0;
+              let collidingCompIndex = null;
 
               if (isCollidingWithOtherComps) {
                 isCollidingWithOtherComps.forEach((otherComp) => {
                   const index = updatedContent.findIndex((c) => c.id === otherComp.id);
                   if (index !== -1) {
                     const collidingComp = updatedContent[index];
+                    collidingCompIndex = index;
 
+                    // const resizeOrMove = shouldResizeOrMove(
+                    //   collidingComp,
+                    //   deltaX,
+                    //   deltaY,
+                    //   updatedContent[i],
+                    //   currentResizingComp
+                    // );
                     const resizeOrMove = shouldResizeOrMove(
                       collidingComp,
                       deltaX,
@@ -595,64 +724,105 @@ export default function Page() {
 
                     if (
                       resizeOrMove &&
-                      collidingComp.size.width + deltaX > collidingComp.size.minWidth
+                      collidingComp.size.width - deltaX < collidingComp.size.minWidth
                     ) {
-                      shouldContinueLoop = true;
+                      // availableDeltaX = +(
+                      //   collidingComp.size.minWidth - collidingComp.size.width
+                      // );
+                      // availableDeltaY = +(
+                      //   collidingComp.size.minHeight - collidingComp.size.height
+                      // );
+                      availableDeltaX =
+                        collidingComp.size.width - collidingComp.size.minWidth;
+                      availableDeltaY =
+                        collidingComp.size.height - collidingComp.size.minHeight;
+                    }
+
+                    if (resizeOrMove === null) {
                       return;
                     }
+
+                    const finalCollidingDeltaX =
+                      availableDeltaX > 0 ? availableDeltaX : deltaX;
+                    const finalCollidingDeltaY =
+                      availableDeltaY > 0 ? availableDeltaY : deltaY;
 
                     updatedContent[index] = {
                       ...collidingComp,
                       size: {
                         ...collidingComp.size,
                         width: resizeOrMove
-                          ? collidingComp.size.width - (deltaX < deltaY ? deltaX : 0)
+                          ? collidingComp.size.width -
+                            (finalCollidingDeltaX < finalCollidingDeltaY
+                              ? finalCollidingDeltaX
+                              : 0)
                           : collidingComp.size.width,
                         height: resizeOrMove
-                          ? collidingComp.size.height - (deltaY < deltaX ? deltaY : 0)
+                          ? collidingComp.size.height -
+                            (finalCollidingDeltaY < finalCollidingDeltaX
+                              ? finalCollidingDeltaY
+                              : 0)
                           : collidingComp.size.height,
                       },
                       position: {
                         ...collidingComp.position,
                         x: !resizeOrMove
-                          ? collidingComp.position.x + (deltaX < deltaY ? deltaX : 0)
+                          ? collidingComp.position.x +
+                            (finalCollidingDeltaX < finalCollidingDeltaY
+                              ? finalCollidingDeltaX
+                              : 0)
                           : collidingComp.position.x,
                         y: !resizeOrMove
-                          ? collidingComp.position.y + (deltaY < deltaX ? deltaY : 0)
+                          ? collidingComp.position.y +
+                            (finalCollidingDeltaY < finalCollidingDeltaX
+                              ? finalCollidingDeltaY
+                              : 0)
                           : collidingComp.position.y,
                       },
                     };
+                    didChange = true;
                   }
                 });
               }
 
-              if (shouldContinueLoop) {
+              // if (resizeOrMove && item.size.width + deltaX > item.size.minWidth) {
+              //   continue;
+              // }
+
+              const finalDeltaX = availableDeltaX > 0 ? availableDeltaX : deltaX;
+              const finalDeltaY = availableDeltaY > 0 ? availableDeltaY : deltaY;
+              const adjacentComp = updatedContent[collidingCompIndex];
+
+              const resizeOrMove = shouldResizeOrMove(
+                item,
+                finalDeltaX,
+                finalDeltaY,
+                adjacentComp,
+                currentResizingComp
+              );
+
+              if (resizeOrMove === null) {
                 continue;
               }
 
-              const resizeOrMove = shouldResizeOrMove(item, deltaX, deltaY);
-
-              if (resizeOrMove && item.size.width + deltaX > item.size.minWidth) {
-                continue;
-              }
               updatedContent[i] = {
                 ...item,
                 size: {
                   ...item.size,
                   width: resizeOrMove
-                    ? item.size.width - (deltaX < deltaY ? deltaX : 0)
+                    ? item.size.width - (finalDeltaX < finalDeltaY ? finalDeltaX : 0)
                     : item.size.width,
                   height: resizeOrMove
-                    ? item.size.height - (deltaY < deltaX ? deltaY : 0)
+                    ? item.size.height - (finalDeltaY < finalDeltaX ? finalDeltaY : 0)
                     : item.size.height,
                 },
                 position: {
                   ...item.position,
                   x: !resizeOrMove
-                    ? item.position.x + (deltaX < deltaY ? deltaX : 0)
+                    ? item.position.x + (finalDeltaX < finalDeltaY ? finalDeltaX : 0)
                     : item.position.x,
                   y: !resizeOrMove
-                    ? item.position.y + (deltaY < deltaX ? deltaY : 0)
+                    ? item.position.y + (finalDeltaY < finalDeltaX ? finalDeltaY : 0)
                     : item.position.y,
                 },
               };
@@ -832,12 +1002,6 @@ export default function Page() {
                               updateCompSize(component.id, d);
                             }}
                             onResize={(e, direction, ref, d) => {
-                              // setTempSizeDelta((prev) => {
-                              //   ...prev,
-                              //   prev.width = d.width,
-                              //   prev.height = d.height,
-                              //   prev.id = component.id
-                              // });
                               setTempSizeDelta({
                                 width: d.width,
                                 height: d.height,
