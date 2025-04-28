@@ -447,7 +447,8 @@ export default function Page() {
     const resizingComp = findResizingComponent();
     const collidingComponents = isResizingCompColliding(resizingComp);
 
-    if (collidingComponents) {
+    // when the collidingComponents cannot be adjusted any further, this prevents the resizingComp from overlapping them
+    if (collidingComponents && collidingComponents.length > 0) {
       collidingComponents.forEach((item) => {
         if (item.id !== id) {
           const deltaX = Math.max(0, calculateDelta(resizingComp, item, widthDelta, "X"));
@@ -457,10 +458,14 @@ export default function Page() {
           );
 
           // uses the smallest delta, as there's an issue that occurs when resizing a comp from its corner
-          widthDelta =
-            widthDelta < heightDelta && widthDelta > 0 ? widthDelta - deltaX : 0;
-          heightDelta =
-            heightDelta < widthDelta && heightDelta > 0 ? heightDelta - deltaY : 0;
+          if (widthDelta !== 0) {
+            widthDelta =
+              widthDelta < heightDelta && widthDelta > 0 ? widthDelta - deltaX : 0;
+          }
+          if (heightDelta !== 0) {
+            heightDelta =
+              heightDelta < widthDelta && heightDelta > 0 ? heightDelta - deltaY : 0;
+          }
         }
       });
     }
@@ -557,111 +562,50 @@ export default function Page() {
   );
 
   const shouldResizeOrMove = useCallback(
-    (item, deltaX, deltaY, adjacentComp, currentResizingComp) => {
+    (item, deltaX, deltaY, adjacentComp) => {
       const { marginTop, marginBottom, marginLeft, marginRight } = parentMargin;
       const { width: screenWidth, height: screenHeight } = screenSize;
+
+      const isHorizontalAdjustment = deltaX <= deltaY;
+      const isVerticalAdjustment = deltaY < deltaX;
+
+      const isMinSize =
+        (item.size.width - deltaX < item.size.minWidth && isHorizontalAdjustment) ||
+        (item.size.height - deltaY < item.size.minHeight && isVerticalAdjustment);
 
       const isOutOfScreen =
         (item.position.x + item.size.width + deltaX >
           screenWidth - (marginLeft + marginRight) &&
-          deltaX < deltaY) ||
+          isHorizontalAdjustment) ||
         (item.position.y + item.size.height + deltaY >
           screenHeight - (marginTop + marginBottom) &&
-          deltaY < deltaX);
-
-      // original attempt
-      // if (adjacentComp) {
-      //   console.log("adjacentComp", adjacentComp);
-
-      //   const colliding = isCompColliding(item, deltaX, deltaY, currentResizingComp);
-      //   if (colliding.length > 0 && item.size.width - deltaX < item.size.minWidth) {
-      //     return null;
-      //   } else if (colliding.length > 0) {
-      //     return true;
-      //   } else if (!isOutOfScreen) {
-      //     return false;
-      //   } else {
-      //     return true;
-      //   }
-      // }
-
-      // if (adjacentComp) {
-      //   console.log("adjacentComp", adjacentComp);
-
-      //   const isOutOfScreen =
-      //     (adjacentComp.position.x + adjacentComp.size.width + deltaX >
-      //       screenWidth - (marginLeft + marginRight) &&
-      //       deltaX < deltaY) ||
-      //     (adjacentComp.position.y + adjacentComp.size.height + deltaY >
-      //       screenHeight - (marginTop + marginBottom) &&
-      //       deltaY < deltaX);
-      //   console.log("isOutOfScreen", isOutOfScreen);
-
-      //   const colliding = isCompColliding(item, deltaX, deltaY, currentResizingComp);
-      //   if (colliding.length > 0 && item.size.width - deltaX < item.size.minWidth) {
-      //     return null;
-      //   } else if (colliding.length > 0) {
-      //     return true;
-      //   } else if (!isOutOfScreen) {
-      //     return false;
-      //   } else {
-      //     return true;
-      //   }
-      // }
+          isVerticalAdjustment);
 
       if (adjacentComp) {
-        console.log("adjacentComp", adjacentComp);
-
-        const isOutOfScreen =
+        const isAdjacentCompOutOfScreen =
           (adjacentComp.position.x + adjacentComp.size.width + deltaX >
             screenWidth - (marginLeft + marginRight) &&
-            deltaX < deltaY) ||
+            isHorizontalAdjustment) ||
           (adjacentComp.position.y + adjacentComp.size.height + deltaY >
             screenHeight - (marginTop + marginBottom) &&
-            deltaY < deltaX);
-        console.log("isOutOfScreen", isOutOfScreen);
+            isVerticalAdjustment);
 
-        const colliding = isCompColliding(item, deltaX, deltaY, currentResizingComp);
-        if (colliding.length == 0) {
-          return false;
-        }
-
-        if (
-          (colliding.length > 0 && item.size.width - deltaX < item.size.minWidth) ||
-          item.size.height - deltaY < item.size.minHeight
-        ) {
+        if (isMinSize) {
           return null;
-        } else if (colliding.length > 0) {
-          return true;
-        } else if (!isOutOfScreen) {
+        } else if (!isAdjacentCompOutOfScreen) {
           return false;
         } else {
           return true;
         }
       }
 
-      if (
-        item.size.width - deltaX < item.size.minWidth &&
-        ((item.position.x + item.size.width + deltaX >
-          screenWidth - (marginLeft + marginRight) &&
-          deltaX < deltaY) ||
-          (item.position.y + item.size.height + deltaY >
-            screenHeight - (marginTop + marginBottom) &&
-            deltaY < deltaX))
-      ) {
+      if (isMinSize && isOutOfScreen) {
         return null;
       }
 
-      return (
-        (item.position.x + item.size.width + deltaX >
-          screenWidth - (marginLeft + marginRight) &&
-          deltaX < deltaY) ||
-        (item.position.y + item.size.height + deltaY >
-          screenHeight - (marginTop + marginBottom) &&
-          deltaY < deltaX)
-      );
+      return isOutOfScreen;
     },
-    [isCompColliding, parentMargin, screenSize]
+    [parentMargin, screenSize]
   );
 
   useEffect(() => {
@@ -709,13 +653,6 @@ export default function Page() {
                     const collidingComp = updatedContent[index];
                     collidingCompIndex = index;
 
-                    // const resizeOrMove = shouldResizeOrMove(
-                    //   collidingComp,
-                    //   deltaX,
-                    //   deltaY,
-                    //   updatedContent[i],
-                    //   currentResizingComp
-                    // );
                     const resizeOrMove = shouldResizeOrMove(
                       collidingComp,
                       deltaX,
@@ -726,14 +663,14 @@ export default function Page() {
                       resizeOrMove &&
                       collidingComp.size.width - deltaX < collidingComp.size.minWidth
                     ) {
-                      // availableDeltaX = +(
-                      //   collidingComp.size.minWidth - collidingComp.size.width
-                      // );
-                      // availableDeltaY = +(
-                      //   collidingComp.size.minHeight - collidingComp.size.height
-                      // );
                       availableDeltaX =
                         collidingComp.size.width - collidingComp.size.minWidth;
+                    }
+
+                    if (
+                      resizeOrMove &&
+                      collidingComp.size.height - deltaY < collidingComp.size.minHeight
+                    ) {
                       availableDeltaY =
                         collidingComp.size.height - collidingComp.size.minHeight;
                     }
@@ -742,41 +679,33 @@ export default function Page() {
                       return;
                     }
 
-                    const finalCollidingDeltaX =
-                      availableDeltaX > 0 ? availableDeltaX : deltaX;
-                    const finalCollidingDeltaY =
-                      availableDeltaY > 0 ? availableDeltaY : deltaY;
+                    const currentAxis = deltaX <= deltaY ? "x" : "y";
+
+                    // TODO when resizing on the Y axis, there's a case where deltaX == deltaY
+                    const adjustWidth = currentAxis === "x" && resizeOrMove;
+                    const adjustHeight = currentAxis === "y" && resizeOrMove;
+
+                    const moveX = currentAxis === "x" && !resizeOrMove;
+                    const moveY = currentAxis === "y" && !resizeOrMove;
 
                     updatedContent[index] = {
                       ...collidingComp,
                       size: {
                         ...collidingComp.size,
-                        width: resizeOrMove
-                          ? collidingComp.size.width -
-                            (finalCollidingDeltaX < finalCollidingDeltaY
-                              ? finalCollidingDeltaX
-                              : 0)
+                        width: adjustWidth
+                          ? collidingComp.size.width - deltaX
                           : collidingComp.size.width,
-                        height: resizeOrMove
-                          ? collidingComp.size.height -
-                            (finalCollidingDeltaY < finalCollidingDeltaX
-                              ? finalCollidingDeltaY
-                              : 0)
+                        height: adjustHeight
+                          ? collidingComp.size.height - deltaY
                           : collidingComp.size.height,
                       },
                       position: {
                         ...collidingComp.position,
-                        x: !resizeOrMove
-                          ? collidingComp.position.x +
-                            (finalCollidingDeltaX < finalCollidingDeltaY
-                              ? finalCollidingDeltaX
-                              : 0)
+                        x: moveX
+                          ? collidingComp.position.x + deltaX
                           : collidingComp.position.x,
-                        y: !resizeOrMove
-                          ? collidingComp.position.y +
-                            (finalCollidingDeltaY < finalCollidingDeltaX
-                              ? finalCollidingDeltaY
-                              : 0)
+                        y: moveY
+                          ? collidingComp.position.y + deltaY
                           : collidingComp.position.y,
                       },
                     };
@@ -784,10 +713,6 @@ export default function Page() {
                   }
                 });
               }
-
-              // if (resizeOrMove && item.size.width + deltaX > item.size.minWidth) {
-              //   continue;
-              // }
 
               const finalDeltaX = availableDeltaX > 0 ? availableDeltaX : deltaX;
               const finalDeltaY = availableDeltaY > 0 ? availableDeltaY : deltaY;
@@ -797,33 +722,34 @@ export default function Page() {
                 item,
                 finalDeltaX,
                 finalDeltaY,
-                adjacentComp,
-                currentResizingComp
+                adjacentComp
               );
 
               if (resizeOrMove === null) {
                 continue;
               }
 
+              const currentAxis = finalDeltaX <= finalDeltaY ? "x" : "y";
+              const shouldAdjustWidth = currentAxis === "x" && resizeOrMove;
+              const shouldAdjustHeight = currentAxis === "y" && resizeOrMove;
+              const shouldMoveX = currentAxis === "x" && !resizeOrMove;
+              const shouldMoveY = currentAxis === "y" && !resizeOrMove;
+
               updatedContent[i] = {
                 ...item,
                 size: {
                   ...item.size,
-                  width: resizeOrMove
-                    ? item.size.width - (finalDeltaX < finalDeltaY ? finalDeltaX : 0)
+                  width: shouldAdjustWidth
+                    ? item.size.width - finalDeltaX
                     : item.size.width,
-                  height: resizeOrMove
-                    ? item.size.height - (finalDeltaY < finalDeltaX ? finalDeltaY : 0)
+                  height: shouldAdjustHeight
+                    ? item.size.height - finalDeltaY
                     : item.size.height,
                 },
                 position: {
                   ...item.position,
-                  x: !resizeOrMove
-                    ? item.position.x + (finalDeltaX < finalDeltaY ? finalDeltaX : 0)
-                    : item.position.x,
-                  y: !resizeOrMove
-                    ? item.position.y + (finalDeltaY < finalDeltaX ? finalDeltaY : 0)
-                    : item.position.y,
+                  x: shouldMoveX ? item.position.x + finalDeltaX : item.position.x,
+                  y: shouldMoveY ? item.position.y + finalDeltaY : item.position.y,
                 },
               };
               didChange = true;
