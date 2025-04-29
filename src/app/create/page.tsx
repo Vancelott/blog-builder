@@ -29,6 +29,7 @@ import {
 import { elements, styles } from "@/app/utils/constants";
 import { Resizable, ResizeCallback } from "re-resizable";
 import { MeasuringStrategy } from "@dnd-kit/core";
+import FloatingToolbar from "@/app/ui/create/floatingToolbar";
 
 export default function Page() {
   // TODO add default content / create a new state variable for the default content (if you think there should be such)
@@ -50,6 +51,10 @@ export default function Page() {
   });
   const [tempSizeDelta, setTempSizeDelta] = useState({ width: 0, height: 0, id: null });
   const [parentMargin, setParentMargin] = useState({});
+  const [selectedComponent, setSelectedComponent] = useState({
+    id: null,
+    isMovable: false,
+  });
 
   const navBarSizeRef = useRef<HTMLDivElement>(null);
   const parentComponentsRef = useRef(null);
@@ -183,6 +188,31 @@ export default function Page() {
       });
     });
     await updateParentMargin();
+  };
+
+  const handlePreviewMode = () => {
+    setPreviewMode(!previewMode);
+  };
+
+  const handleGridMode = () => {
+    setShowGrid(!showGrid);
+  };
+
+  const handleSelect = () => {
+    setShowSelect(!showSelect);
+  };
+
+  const handleSelectComponent = (compId: number) => {
+    if (compId == null) {
+      setSelectedComponent({ id: null, isMovable: null });
+    }
+
+    const comp = addedContent.find((comp) => comp.id === compId);
+    setSelectedComponent({ id: compId, isMovable: comp.isMovable });
+  };
+
+  const handleCreatePage = () => {
+    createPage(addedContent);
   };
 
   const handleSubmit = async (elementId: number) => {
@@ -342,13 +372,13 @@ export default function Page() {
     });
   };
 
-  const updateCompDraggable = (id: number, value: boolean) => {
+  const toggleComponentDraggable = () => {
     setAddedContent((prevAddedContent) => {
       return prevAddedContent.map((component) => {
-        if (component.id === id) {
+        if (component.id === selectedComponent.id && component.disabled !== null) {
           return {
             ...component,
-            disabled: value,
+            disabled: !component.disabled,
           };
         }
         return component;
@@ -470,6 +500,9 @@ export default function Page() {
       });
     }
 
+    console.log("heightDelta", heightDelta);
+    console.log("widthDelta", widthDelta);
+
     setAddedContent((prevAddedContent) => {
       return prevAddedContent.map((component) => {
         if (component.id === id) {
@@ -477,10 +510,10 @@ export default function Page() {
             ...component,
             size: {
               ...component.size,
-              height: component.size.height + heightDelta,
-              width: component.size.width + widthDelta,
-              deltaHeight: component.size.deltaHeight + heightDelta,
-              deltaWidth: component.size.deltaWidth + widthDelta,
+              height: parseInt(component.size.height) + parseInt(heightDelta),
+              width: parseInt(component.size.width) + parseInt(widthDelta),
+              deltaHeight: parseInt(component.size.deltaHeight) + parseInt(heightDelta),
+              deltaWidth: parseInt(component.size.deltaWidth) + parseInt(widthDelta),
             },
           };
         }
@@ -774,7 +807,7 @@ export default function Page() {
   return (
     // TODO remove flex-col?
     // <div className="flex h-screen w-full relative overflow-hidden">-
-    <div className="flex flex-col h-screen w-full relative overflow-hidden">
+    <div className="flex flex-col h-screen w-full relative overflow-hidden bg-black">
       <DndContext
         onDragEnd={handleDragEnd}
         onDragStart={handleDragStart}
@@ -801,8 +834,15 @@ export default function Page() {
                 // className="absolute z-20"
                 className={`${component.positionClass} absolute z-20`}
                 key={component.id}
+                style={{
+                  width: component.size.width,
+                  height: component.size.height,
+                }}
               >
-                <div ref={(el) => (componentRefs.current[component.id] = el)}>
+                <div
+                  ref={(el) => (componentRefs.current[component.id] = el)}
+                  onClick={() => handleSelectComponent(component.id)}
+                >
                   <Resizable
                     minHeight={component.size.minHeight}
                     minWidth={component.size.minWidth}
@@ -876,7 +916,10 @@ export default function Page() {
               strategy={rectSwappingStrategy}
             >
               {addedContent
-                .filter((component) => component.parentId === null)
+                .filter(
+                  (component) =>
+                    component.parentId === null && component.dnd !== "Droppable"
+                )
                 .map((component) => (
                   <div
                     key={component.id}
@@ -893,65 +936,55 @@ export default function Page() {
                       }px, 0)`,
                     }}
                     ref={draggableRef}
+                    onClick={() => handleSelectComponent(component.id)}
                   >
-                    <button
-                      className="p-1 bg-red-900 z-10"
-                      onClick={() =>
-                        updateCompDraggable(component.id, !component.disabled)
-                      }
-                    >
-                      Disable
-                    </button>
-
-                    {component.dnd !== "Droppable" ? (
-                      <>
-                        {/* TODO Move the sortable up, so that the collision works better? */}
-                        <Sortable
-                          id={component.id}
-                          position={component.position}
-                          screenSize={screenSize}
-                          className="flex z-40 absolute "
-                          disabled={component.disabled}
+                    <>
+                      {/* TODO Move the sortable up, so that the collision works better? */}
+                      <Sortable
+                        id={component.id}
+                        position={component.position}
+                        screenSize={screenSize}
+                        className="flex z-40 absolute "
+                        disabled={component.disabled}
+                      >
+                        <Resizable
+                          // style={{
+                          //   display: "flex",
+                          //   alignItems: "center",
+                          //   justifyContent: "center",
+                          //   flexDirection: "column",
+                          // }}
+                          size={{
+                            width: component.size.width,
+                            height: component.size.height,
+                          }}
+                          onResizeStop={(e, direction, ref, d) => {
+                            updateCompSize(component.id, d);
+                          }}
+                          onResize={(e, direction, ref, d) => {
+                            setTempSizeDelta({
+                              width: d.width,
+                              height: d.height,
+                              id: component.id,
+                            });
+                          }}
+                          className="outline-4 outline-purple-300"
                         >
-                          <Resizable
-                            // style={{
-                            //   display: "flex",
-                            //   alignItems: "center",
-                            //   justifyContent: "center",
-                            //   flexDirection: "column",
-                            // }}
-                            size={{
-                              width: component.size.width,
-                              height: component.size.height,
-                            }}
-                            onResizeStop={(e, direction, ref, d) => {
-                              updateCompSize(component.id, d);
-                            }}
-                            onResize={(e, direction, ref, d) => {
-                              setTempSizeDelta({
-                                width: d.width,
-                                height: d.height,
-                                id: component.id,
-                              });
-                            }}
-                            className="outline-4 outline-purple-300"
-                          >
-                            <DynamicElement
-                              tag={component.tag}
-                              id={component.id}
-                              element={component}
-                              gridId={component.gridId}
-                              handleInputChange={handleInputChange}
-                              previewMode={previewMode}
-                              input={component.input}
-                            />
-                            <p>x: {component.position.x}</p>
-                            <p>y: {component.position.y}</p>
-                            <p>id: {component.id}</p>
-                          </Resizable>
-                        </Sortable>
-                      </>
-                    ) : null}
+                          <DynamicElement
+                            tag={component.tag}
+                            id={component.id}
+                            element={component}
+                            gridId={component.gridId}
+                            handleInputChange={handleInputChange}
+                            previewMode={previewMode}
+                            input={component.input}
+                          />
+                          <p>x: {component.position.x}</p>
+                          <p>y: {component.position.y}</p>
+                          <p>id: {component.id}</p>
+                        </Resizable>
+                      </Sortable>
+                    </>
                   </div>
                 ))}
             </SortableContext>
@@ -993,59 +1026,37 @@ export default function Page() {
           </Droppable>
         </div>
         <div className="flex flex-col gap-4 w-full h-screen place-items-center justify-end pt-36 pb-4">
-          <div className="flex flex-col items-center gap-4">
-            <button
-              // TODO make a handle function with a pop up if there are no added elements
-              onClick={() => setPreviewMode(!previewMode)}
-              className="p-1 bg-orange-300 rounded-2xl text-black z-50"
+          <p className="text-white">
+            {addedContent[0]?.size.width}, {addedContent[0]?.size.height}
+          </p>
+          {showSelect && (
+            <select
+              defaultValue="default"
+              className="py-4 px-24 text-black text-lg mt-6 z-50"
+              onChange={(e) => handleSubmit(e.target.value)}
             >
-              {!previewMode ? "Preview Mode" : "Editing Mode"}
-            </button>
-            <button
-              onClick={() => setShowGrid(!showGrid)}
-              className="p-1 bg-blue-300 rounded-2xl text-black z-50"
-            >
-              {!showGrid ? "Show Grid" : "Hide Grid"}
-            </button>
-            {showSelect && (
-              <select
-                defaultValue="default"
-                className="py-4 px-24 text-black text-lg mt-6 z-50"
-                onChange={(e) => handleSubmit(e.target.value)}
-              >
-                <option value="default" disabled hidden>
-                  Select an element
+              <option value="default" disabled hidden>
+                Select an element
+              </option>
+              {elements?.map((item, index) => (
+                <option key={index} value={item.componentId}>
+                  {item.placeholder}
                 </option>
-                {elements?.map((item, index) => (
-                  <option key={index} value={item.componentId}>
-                    {item.placeholder}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-          <div className="flex flex-col gap-3">
-            {!previewMode && (
-              <button
-                onClick={() => {
-                  setShowSelect(true);
-                }}
-                className="py-6 px-32 font-bold border-2 border-dashed border-orange-400 rounded-lg z-50"
-              >
-                Add
-              </button>
-            )}
-            {!previewMode && (
-              <button
-                onClick={() => {
-                  createPage(addedContent);
-                }}
-                className="py-6 px-32 font-bold border-2 border-dashed border-green-500 rounded-lg z-50"
-              >
-                Create
-              </button>
-            )}
-          </div>
+              ))}
+            </select>
+          )}
+
+          <FloatingToolbar
+            props={{
+              handlePositionChange,
+              handlePreviewMode,
+              handleGridMode,
+              handleSelect,
+              handleCreatePage,
+              toggleComponentDraggable,
+              selectedComponent,
+            }}
+          />
         </div>
       </DndContext>
     </div>

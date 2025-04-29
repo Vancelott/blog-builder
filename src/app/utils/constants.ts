@@ -65,6 +65,7 @@ export const elements: IElement[] = [
       minHeight: 0,
       minWidth: 0,
     },
+    isMovable: true,
   },
   {
     id: null,

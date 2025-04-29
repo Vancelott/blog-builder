@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { PropsWithChildren } from "react";
-import { PositionButtons } from "@/app/ui/create/components/positionButtons";
 import { Draggable } from "@/app/ui/create/draggable";
 import { IDynamicElement } from "@/app/types/index";
 import { TextArea } from "@/app/ui/create/components/textArea";
@@ -82,7 +81,6 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
         }
       >
         <div className="z-20 mt-8">
-          <PositionButtons handlePositionChange={props.handlePositionChange} />
           <p>{props.tempSizeDelta.id}</p>
           <p>{props.element.id}</p>
         </div>

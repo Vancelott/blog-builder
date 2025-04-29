@@ -28,6 +28,7 @@ export interface IElement {
   gridId: string;
   position: { x: number; y: number; placement?: string };
   size?: Resize;
+  isMovable?: boolean;
 }
 
 export interface IDynamicElement {

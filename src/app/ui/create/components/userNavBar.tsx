@@ -74,8 +74,6 @@ export function UserNavBar(props: PropsWithChildren<IUserNavBar>) {
       // TODO add w-[${navRef.current?.offsetWidth}px] h-[${navRef.current?.offsetHeight}px] ?
     >
       <div>{props.children}</div>
-      <p>{navRef.current?.offsetHeight}</p>
-      <p>{navRef.current?.offsetWidth}</p>
     </div>
   );
 }
