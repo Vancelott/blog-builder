@@ -39,9 +39,11 @@ export default function Page() {
   const [previewMode, setPreviewMode] = useState<boolean>(false);
   const [draggingComponentId, setDraggingComponentId] = useState<number>(null);
   const [showGrid, setShowGrid] = useState<boolean>(false);
-  const [navBarSize, setNavBarSize] = useState({});
+  const [navBarSize, setNavBarSize] = useState<{ size: number; marginDirection: string }>(
+    {}
+  );
   const [posState, setPosState] = useState<string>();
-  const [screenSize, setScreenSize] = useState({
+  const [screenSize, setScreenSize] = useState<{ [name: string]: number }>({
     width: window?.innerWidth,
     height: window?.innerHeight,
     initialWidth: window?.innerWidth,
@@ -49,12 +51,20 @@ export default function Page() {
     deltaX: 0,
     deltaY: 0,
   });
-  const [tempSizeDelta, setTempSizeDelta] = useState({ width: 0, height: 0, id: null });
-  const [parentMargin, setParentMargin] = useState({});
-  const [selectedComponent, setSelectedComponent] = useState({
+  const [tempSizeDelta, setTempSizeDelta] = useState<{ [name: string]: number | null }>({
+    width: 0,
+    height: 0,
     id: null,
-    isMovable: false,
   });
+  const [parentMargin, setParentMargin] = useState<{ [name: string]: number }>({});
+  const [selectedComponent, setSelectedComponent] = useState<{
+    id: number | null;
+    isMovable: boolean | null;
+  }>({
+    id: null,
+    isMovable: null,
+  });
+  const [shouldCheckForCollision, setShouldCheckForCollision] = useState<boolean>(false);
 
   const navBarSizeRef = useRef<HTMLDivElement>(null);
   const parentComponentsRef = useRef(null);
@@ -290,8 +300,17 @@ export default function Page() {
       return;
     }
 
+    if (draggedComponent.parentId !== null && collisions.length >= 2) {
+      return;
+    }
+
     // handles the swapping of components (if elementId == newStatus, it just means the component has been moved, and not swapped)
-    if (collisions.length >= 2 && elementId !== newStatus && !isNaN(newStatus)) {
+    if (
+      collisions.length >= 2 &&
+      elementId !== newStatus &&
+      !isNaN(newStatus) &&
+      !isParentComponent
+    ) {
       const swappedComponent = addedContent.find((item) => item.id === over.id);
 
       setAddedContent((prevAddedContent) => {
@@ -310,6 +329,7 @@ export default function Page() {
           return component;
         });
 
+        // setSelectedComponent({ id: null, isMovable: null });
         return arraySwap(updatedContent, draggedComponent.id, swappedComponent.id);
       });
     } else {
@@ -332,6 +352,7 @@ export default function Page() {
               const droppedComponent = prevAddedContent.find(
                 (component) => component.id === newStatus
               );
+
               return {
                 ...component,
                 gridId: null,
@@ -356,6 +377,8 @@ export default function Page() {
           return component;
         });
       });
+      setShouldCheckForCollision(true);
+      // setSelectedComponent({ id: null, isMovable: null });
     }
   };
 
@@ -500,9 +523,6 @@ export default function Page() {
       });
     }
 
-    console.log("heightDelta", heightDelta);
-    console.log("widthDelta", widthDelta);
-
     setAddedContent((prevAddedContent) => {
       return prevAddedContent.map((component) => {
         if (component.id === id) {
@@ -640,6 +660,104 @@ export default function Page() {
     },
     [parentMargin, screenSize]
   );
+
+  const isCollidingAfterUpdate = useCallback(() => {
+    const comp = addedContent.find((comp) => comp.id === draggingComponentId);
+    if (comp) {
+      const isColliding = isCompColliding(comp, 0, 0, null);
+      let deltaX = 0;
+      let deltaY = 0;
+      if (isColliding && isColliding.length > 0) {
+        for (const collidingComp of isColliding) {
+          let compDeltaX = calculateDelta(comp, collidingComp, 0, "X");
+          let compDeltaY = calculateDelta(comp, collidingComp, 0, "Y");
+
+          compDeltaX =
+            comp.position.x < collidingComp.position.x ? -compDeltaX : compDeltaX;
+          compDeltaY =
+            comp.position.y < collidingComp.position.y ? -compDeltaY : compDeltaY;
+
+          const totalDeltaX = compDeltaX > 0 ? compDeltaX + deltaX : compDeltaX - deltaX;
+          const totalDeltaY = compDeltaY > 0 ? compDeltaY + deltaY : compDeltaY - deltaY;
+
+          const isStillColliding = isCompColliding(comp, totalDeltaX, totalDeltaY, null);
+
+          if (isStillColliding.length === 0) {
+            deltaX = totalDeltaX;
+            deltaY = totalDeltaY;
+            break;
+          }
+
+          const leftCollision = compDeltaX < 0;
+          const rightCollision = compDeltaX > 0;
+          const topCollision = compDeltaY < 0;
+          const bottomCollision = compDeltaY > 0;
+
+          if (leftCollision) {
+            deltaX -= compDeltaX;
+          } else if (rightCollision) {
+            deltaX += compDeltaX;
+          } else if (leftCollision && rightCollision) {
+            deltaX = 0;
+          }
+
+          if (topCollision) {
+            deltaY -= compDeltaY;
+          } else if (bottomCollision) {
+            deltaY += compDeltaY;
+          } else if (topCollision && bottomCollision) {
+            deltaY = 0;
+          }
+        }
+
+        const isDeltaEnough = isCompColliding(comp, deltaX, deltaY, null);
+        const maxPixelsAdded = 150;
+        let pixelsAdded = 0;
+
+        while (isDeltaEnough.length > 0 && maxPixelsAdded <= pixelsAdded) {
+          deltaX += deltaX > 0 ? 10 : -10;
+          deltaY += deltaY > 0 ? 10 : -10;
+          pixelsAdded += 10;
+          const check = isCompColliding(comp, deltaX, deltaY, null);
+          if (check.length === 0) {
+            break;
+          }
+        }
+
+        // const currentAxis = Math.abs(deltaX) < Math.abs(deltaY) ? "x" : "y";
+        const currentAxis = deltaX < deltaY ? "x" : "y";
+
+        setAddedContent((prevAddedContent) => {
+          return prevAddedContent.map((component) => {
+            if (component.id === comp.id) {
+              return {
+                ...component,
+                position: {
+                  ...component.position,
+                  x:
+                    currentAxis === "x"
+                      ? component.position.x + deltaX
+                      : component.position.x,
+                  y:
+                    currentAxis === "y"
+                      ? component.position.y + deltaY
+                      : component.position.y,
+                },
+              };
+            }
+            return component;
+          });
+        });
+      }
+    }
+  }, [addedContent, draggingComponentId, isCompColliding]);
+
+  useEffect(() => {
+    if (shouldCheckForCollision) {
+      isCollidingAfterUpdate();
+      setShouldCheckForCollision(false);
+    }
+  }, [addedContent, isCollidingAfterUpdate, shouldCheckForCollision]);
 
   useEffect(() => {
     const { height: heightDelta, width: widthDelta, id: idDelta } = tempSizeDelta;
@@ -946,6 +1064,10 @@ export default function Page() {
                         screenSize={screenSize}
                         className="flex z-40 absolute "
                         disabled={component.disabled}
+                        style={{
+                          width: component.size.width,
+                          height: component.size.height,
+                        }}
                       >
                         <Resizable
                           // style={{
@@ -979,9 +1101,9 @@ export default function Page() {
                             previewMode={previewMode}
                             input={component.input}
                           />
-                          <p>x: {component.position.x}</p>
-                          <p>y: {component.position.y}</p>
-                          <p>id: {component.id}</p>
+                          <p className="text-white">x: {component.position.x}</p>
+                          <p className="text-white">y: {component.position.y}</p>
+                          <p className="text-white">id: {component.id}</p>
                         </Resizable>
                       </Sortable>
                     </>
@@ -1026,9 +1148,6 @@ export default function Page() {
           </Droppable>
         </div>
         <div className="flex flex-col gap-4 w-full h-screen place-items-center justify-end pt-36 pb-4">
-          <p className="text-white">
-            {addedContent[0]?.size.width}, {addedContent[0]?.size.height}
-          </p>
           {showSelect && (
             <select
               defaultValue="default"
