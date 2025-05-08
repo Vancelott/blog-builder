@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { PropsWithChildren } from "react";
 import { Draggable } from "@/app/ui/create/draggable";
 import { IDynamicElement } from "@/app/types/index";
@@ -11,7 +11,95 @@ import { ChildElements } from "@/app/ui/create/childElements";
 import { CreateComponents } from "@/app/utils/constants";
 
 export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
-  const [textAreaInput, setTextAreaInput] = useState<string>("");
+  // const [textAreaInput, setTextAreaInput] = useState<string>("");
+
+  const [screenSize, setScreenSize] = useState<{ [name: string]: number }>({
+    width: window?.innerWidth,
+    height: window?.innerHeight,
+    initialWidth: window?.innerWidth,
+    initialHeight: window?.innerHeight,
+    // width: 0,
+    // height: 0,
+    // initialWidth: 0,
+    // initialHeight: 0,
+    deltaX: 0,
+    deltaY: 0,
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setScreenSize({
+        ...screenSize,
+        width: window.innerWidth,
+        height: window.innerHeight,
+        deltaX: window.innerWidth - screenSize.initialWidth,
+        deltaY: window.innerHeight - screenSize.initialHeight,
+      });
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [screenSize]);
+
+  const calculatePosition = useCallback(
+    (pos: string) => {
+      if (pos === "X") {
+        const gridWidth = props.mainGridRef?.current?.offsetWidth;
+        const elementX = props.element.position.x;
+        const elementWidth = props.element.size.width;
+
+        // use original comp position
+        if (elementX + elementWidth <= gridWidth) {
+          return elementX;
+        }
+
+        // Adjusted position based on delta
+        const adjustedX = elementX + screenSize?.deltaX;
+
+        // Clamp to grid bounds
+        if (adjustedX < 0) {
+          return 0;
+        } else if (adjustedX + elementWidth > gridWidth) {
+          return gridWidth - elementWidth;
+        }
+
+        return adjustedX;
+      } else if (pos === "Y") {
+        const gridHeight = props.mainGridRef?.current?.offsetHeight;
+        const elementY = props.element.position.y;
+        const elementHeight = props.element.size.height;
+
+        // use original comp position
+        if (elementY + elementHeight <= gridHeight) {
+          return elementY;
+        }
+
+        // Adjusted position based on delta
+        const adjustedY = elementY + screenSize?.deltaY;
+
+        // Clamp to grid bounds
+        if (adjustedY < 0) {
+          return 0;
+        } else if (adjustedY + elementHeight > gridHeight) {
+          return gridHeight - elementHeight;
+        }
+
+        return adjustedY;
+      }
+    },
+    [
+      props.element.position.x,
+      props.element.position.y,
+      props.element.size.height,
+      props.element.size.width,
+      props.mainGridRef,
+      screenSize?.deltaX,
+      screenSize?.deltaY,
+    ]
+  );
 
   if (props.element.gridId) {
     return (
@@ -27,10 +115,24 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
               );
             }
             return (
-              <div key={props.element.id}>
+              <div
+                key={props.element.id}
+                style={
+                  props.shouldAdjustPosition
+                    ? {
+                        transform: `translate3d(${calculatePosition(
+                          "X"
+                        )}px, ${calculatePosition("Y")}px, 0)`,
+                      }
+                    : null
+                }
+              >
                 <Component
+                  position={props?.element.position}
+                  screenSize={screenSize}
                   handleInputChange={props.handleInputChange}
                   id={props.element.id}
+                  shouldAdjustPosition={props.shouldAdjustPosition}
                 />
               </div>
             );
@@ -63,7 +165,7 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
           isDropped={props.isDropped}
           // TODO create a handle function and add slight debounce
           onChange={(e) => props.input(item.id, e.target.value)}
-          value={textAreaInput}
+          // value={textAreaInput}
         ></TextArea>
       </>
     );
@@ -77,13 +179,10 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
         size={props.element.size}
         placement={props.element.position}
         tempSizeDelta={
-          props.tempSizeDelta.id == props.element.id ? props.tempSizeDelta : null
+          props.tempSizeDelta?.id == props.element.id ? props.tempSizeDelta : null
         }
       >
-        <div className="z-20 mt-8">
-          <p>{props.tempSizeDelta.id}</p>
-          <p>{props.element.id}</p>
-        </div>
+        <div className="z-20 mt-8"></div>
         {props.childElements && props.element && (
           <ChildElements
             childElements={props.childElements}
@@ -99,7 +198,7 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
       <Header
         size={props.element.size}
         tempSizeDelta={
-          props.tempSizeDelta.id == props.element.id ? props.tempSizeDelta : null
+          props.tempSizeDelta?.id == props.element.id ? props.tempSizeDelta : null
         }
       />
     );

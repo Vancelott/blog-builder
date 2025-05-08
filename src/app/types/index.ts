@@ -40,5 +40,11 @@ export interface IDynamicElement {
   input: string;
   positionStyle: string;
   ref: HTMLDivElement;
+  shouldAdjustPosition: boolean;
   handlePositionChange: (position: string) => void;
+}
+
+export interface SlugPageData {
+  data: IElement[];
+  otherData: { [key: string]: object | string | number } | null;
 }

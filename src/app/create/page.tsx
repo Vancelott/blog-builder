@@ -222,7 +222,7 @@ export default function Page() {
   };
 
   const handleCreatePage = () => {
-    createPage(addedContent);
+    createPage(addedContent, { parentMargin: parentMargin });
   };
 
   const handleSubmit = async (elementId: number) => {
@@ -1042,6 +1042,7 @@ export default function Page() {
                   <div
                     key={component.id}
                     className="z-5 absolute border-2 border-purple-500"
+                    // TODO should check for collision before moving
                     style={{
                       transform: `translate3d(${
                         component.position.x + screenSize.deltaX < 0

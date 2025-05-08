@@ -37,8 +37,9 @@ export const updateUser = async (prevState, formData: FormData) => {
 };
 
 // export const createPage = async ({ data }: IElement[]) => {
-export const createPage = async (data) => {
+export const createPage = async (data, otherData) => {
   const session = await auth();
+  console.log("otherData", otherData);
 
   if (!session.user.name) {
     console.log("no username");
@@ -55,18 +56,24 @@ export const createPage = async (data) => {
     );
     if (!page) {
       await pool.query(
-        `INSERT INTO pages (userId, slug, data, blog_ids)
-      VALUES ($1, $2, $3, '{}');`,
-        [session.user.id, session.user.name, data]
+        `INSERT INTO pages (userId, slug, data, blog_ids, other_data)
+      VALUES ($1, $2, $3, '{}', $4);`,
+        [session.user.id, session.user.name, data, otherData]
       );
       return { success: true };
     } else {
       // TODO once done, remove the update if you don't create a separate update handler
+      // await pool.query(
+      //   `UPDATE pages
+      // SET data = $1
+      // WHERE slug = $2;`,
+      //   [data, session.user.name]
+      // );
       await pool.query(
         `UPDATE pages
-      SET data = $1
-      WHERE slug = $2;`,
-        [data, session.user.name]
+         SET data = $1, other_data = $2
+         WHERE slug = $3;`,
+        [data, otherData, session.user.name]
       );
     }
   } catch (error) {
@@ -83,7 +90,7 @@ export const getPage = async (slug: string) => {
       WHERE slug = $1;`,
       [slug]
     );
-    return page.rows[0].data;
+    return await { data: page.rows[0].data, otherData: page.rows[0].other_data };
   } catch (error) {
     console.log(error);
     // return error.issues[0];

@@ -3,10 +3,12 @@ import { Draggable } from "@/app/ui/create/draggable";
 import { CreateComponents } from "@/app/utils/constants";
 
 export const ChildElements = ({ childElements, draggableRef }) => {
-  const ref = useRef();
-  useEffect(() => {
-    draggableRef.current = ref.current;
-  }, [draggableRef, ref]);
+  // const ref = useRef();
+  // useEffect(() => {
+  //   if (draggableRef !== undefined) {
+  //     draggableRef.current = ref.current;
+  //   }
+  // }, [draggableRef, ref]);
 
   return childElements?.map((element) => {
     const mappedComponent = CreateComponents.find(
@@ -19,7 +21,7 @@ export const ChildElements = ({ childElements, draggableRef }) => {
     return (
       <Draggable key={element.id} id={element.id}>
         {/* TODO Pass the ref as a prop instead? */}
-        <div ref={draggableRef}>
+        <div ref={draggableRef !== undefined ? draggableRef : null}>
           <Component />
         </div>
       </Draggable>

@@ -35,7 +35,9 @@ export function UserNavBar(props: PropsWithChildren<IUserNavBar>) {
   }, [props.placement, size.placement]);
 
   useEffect(() => {
-    ref.current = navRef.current;
+    if (navRef && ref) {
+      ref.current = navRef.current;
+    }
   }, [ref, navRef]);
 
   const calculateDimension = (initial: number, prevDelta: number, tempDelta: number) => {
