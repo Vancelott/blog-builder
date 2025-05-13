@@ -4,6 +4,9 @@ import { pool } from "@/app/lib/db";
 import { auth } from "@/app/auth";
 import { z } from "zod";
 import { IElement } from "@/app/types/index";
+import { findTitle } from "@/app/utils/helpers";
+import slugify from "slugify";
+import { redirect } from "next/navigation";
 
 export const updateUser = async (prevState, formData: FormData) => {
   const session = await auth();
@@ -90,10 +93,81 @@ export const getPage = async (slug: string) => {
       WHERE slug = $1;`,
       [slug]
     );
-    return await { data: page.rows[0].data, otherData: page.rows[0].other_data };
+    // console.log("page", page);
+    return await {
+      data: page.rows[0].data,
+      otherData: page.rows[0].other_data,
+      id: page.rows[0].id,
+    };
   } catch (error) {
     console.log(error);
     // return error.issues[0];
     return error;
   }
+};
+
+export const getBlogPost = async (slug: string) => {
+  try {
+    const post = await pool.query(
+      `SELECT * FROM blog_posts
+      WHERE slug = $1;`,
+      [slug]
+    );
+    if (post.rows.length === 0) {
+      return null;
+    }
+
+    return post.rows[0];
+  } catch (error) {
+    console.log(error);
+    // return error.issues[0];
+    return error;
+  }
+};
+
+export const createBlogPost = async (blogSlug: string, htmlOutput: string) => {
+  const session = await auth();
+
+  const { id } = await getPage(blogSlug);
+
+  const title = findTitle(htmlOutput);
+  let slug = slugify(title, {
+    strict: true,
+    lower: true,
+  });
+
+  const alreadyCreated = await getBlogPost(slug);
+
+  if (alreadyCreated) {
+    let newSlug = slug;
+    let id = 0;
+    let foundAvailableSlug = false;
+    while (!foundAvailableSlug) {
+      id++;
+      newSlug = slug + "-" + id;
+      const isNewSlugAvailable = await getBlogPost(newSlug);
+      if (isNewSlugAvailable === null) {
+        console.log("available slug:", newSlug);
+        foundAvailableSlug = true;
+      }
+    }
+    slug = newSlug;
+  }
+
+  try {
+    const post = await pool.query(
+      `INSERT INTO blog_posts (page_id, slug, title, html, username)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *;`,
+      [id, slug, title, htmlOutput, session.user.name]
+    );
+    console.log("Post created:", post);
+    // TODO return the post.rows or the slug and redirect?
+    // return post.rows[0];
+  } catch (error) {
+    console.log(error);
+    // return error.issues[0];
+    return error;
+  }
+  redirect(`/${blogSlug}/${slug}`, "replace");
 };

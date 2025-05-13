@@ -233,6 +233,7 @@ export default function Page() {
           ...item,
         };
         elementToBeAdded.id = addedContent.length;
+        elementToBeAdded.gridId = "mainGrid";
       }
     });
     setAddedContent((prevContent) => [...prevContent, elementToBeAdded]);
@@ -341,6 +342,7 @@ export default function Page() {
                 ...component,
                 gridId: newStatus,
                 parentId: null,
+                // TODO deleted isDropped?
                 isDropped: true,
                 position: {
                   x: component.position.x + delta.x,
@@ -355,7 +357,8 @@ export default function Page() {
 
               return {
                 ...component,
-                gridId: null,
+                // TODO uncomment or delete once components don't get dragged upon resizing
+                // gridId: null,
                 parentId: droppedComponent.dnd === "Droppable" ? newStatus : null,
                 isDropped: true,
                 position: {
@@ -383,6 +386,7 @@ export default function Page() {
   };
 
   const handleInputChange = (id: number, text: string) => {
+    console.log("text", text);
     setAddedContent((prevAddedContent) => {
       return prevAddedContent.map((component) => {
         if (component.id === id) {

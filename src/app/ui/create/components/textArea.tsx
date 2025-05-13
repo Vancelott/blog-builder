@@ -1,41 +1,23 @@
 "use client";
 
-export function TextArea({
-  isDropped,
-  handleInputChange,
-  id,
-  position,
-  screenSize,
-  shouldAdjustPosition,
-}) {
-  // const { position, screenSize } = style;
-  console.log("position", position);
-  console.log("position.x + screenSize?.deltaX", position?.x + screenSize?.deltaX);
-  // if (shouldAdjustPosition) {
-  //   return (
-  //     <div>
-  //       <textarea
-  //         style={{
-  //           transform: `translate3d(${
-  //             // position.x + screenSize?.deltaX < 0 || position.x < screenSize.width
-  //             position.x + screenSize?.deltaX < 0 ? 0 : position.x + screenSize?.deltaX
-  //           }px, ${
-  //             position.y + screenSize?.deltaY < 0 ? 0 : position.y + screenSize?.deltaY
-  //           }px, 0)`,
-  //         }}
-  //       />
-  //     </div>
-  //   );
-  // }
+import { useState } from "react";
+
+export function TextArea({ handleInputChange, id, style, input }) {
+  const [value, setValue] = useState<string>(
+    "Lorem, ipsum dolor sit amet consectetur adipisicing elit. Eligendi, consequatur accusamus nemo, hic voluptatum tenetur cupiditate iure amet, minus labore fugiat. Illo in iure repellendus quaerat, tempora voluptate neque debitis."
+  );
+
+  const handleInput = (newValue: string) => {
+    setValue(newValue);
+    handleInputChange(id, newValue);
+  };
 
   return (
-    <div>
-      <textarea
-        //  TODO Add debounce
-        onChange={(e) => handleInputChange(id, e.target.value)}
-        className={`${isDropped ? "hidden" : ""}`}
-        placeholder="Enter your text here.."
-      />
-    </div>
+    <textarea
+      style={style}
+      onChange={(e) => handleInput(e.target.value)}
+      className="bg-transparent border-none text-white text-wrap overflow-hidden resize-none"
+      value={!input ? value : input}
+    />
   );
 }

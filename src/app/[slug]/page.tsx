@@ -24,6 +24,7 @@ export default function Page() {
         try {
           const data = await getPage(params.slug);
           if (!isDataFetched) {
+            console.log("data", data);
             setPageData(data);
           }
         } catch (error) {
@@ -47,40 +48,6 @@ export default function Page() {
   if (screenSize.width < 700) {
     return (
       <div className="flex flex-col h-screen w-full relative overflow-hidden bg-black ">
-        {/* <div>
-          {pageData?.data
-            .filter((component) => component.dnd === "Droppable")
-            .map((item, index) => {
-              return (
-                <div
-                  // className={`${item.positionClass} absolute z-20`}
-                  className={`absolute z-20`}
-                  style={{
-                    // transform: `translate3d(${item.position.x}px, ${item.position.y}px, 0)`,
-                    // top: `${top}px`,
-                    // left: `${left}px`,
-                    width: item.size.width,
-                    height: item.size.height,
-                  }}
-                  key={item.id}
-                >
-                  <DynamicElement
-                    element={item}
-                    // handleInputChange={handleInputChange}
-                    // handlePositionChange={handlePositionChange}
-                    // previewMode={previewMode}
-                    input={item.input}
-                    childElements={pageData.data.filter(
-                      (items) => items.parentId === item.id
-                    )}
-                    tag={item.tag}
-                    id={item.id}
-                  />
-                </div>
-              );
-            })}
-        </div> */}
-        {/* // TODO the applied margin has to reach this point */}
         <div className="flex flex-col justify-center place-items-center m-8">
           {pageData?.data
             .filter(
@@ -88,17 +55,7 @@ export default function Page() {
             )
             .map((item, index) => {
               return (
-                <div
-                  // className="absolute"
-                  // style={{
-                  //   transform: `translate3d(${item.position.x}px, ${item.position.y}px, 0)`,
-                  //   // top: `${top}px`,
-                  //   // left: `${left}px`,
-                  //   width: item.size.width,
-                  //   height: item.size.height,
-                  // }}
-                  key={item.id}
-                >
+                <div key={item.id}>
                   <DynamicElement
                     element={item}
                     // handleInputChange={handleInputChange}
@@ -119,6 +76,10 @@ export default function Page() {
 
   return (
     <div className="flex h-screen w-full bg-black overflow-hidden">
+      <button className="bottom-0 right-0 m-4 absolute rounded-full p-4 bg-orange-600 text-white z-50">
+        Create Blog
+      </button>
+      {/* Parent Components */}
       {pageData?.data
         .filter((component) => component.dnd === "Droppable")
         .map((item, index) => {
@@ -138,9 +99,6 @@ export default function Page() {
             <DynamicElement
               key={item.id}
               element={item}
-              // handleInputChange={handleInputChange}
-              // handlePositionChange={handlePositionChange}
-              // previewMode={previewMode}
               input={item.input}
               childElements={pageData.data.filter((items) => items.parentId === item.id)}
               tag={item.tag}
@@ -149,7 +107,7 @@ export default function Page() {
             // </div>
           );
         })}
-      {/* // TODO the applied margin has to reach this point */}
+      {/*Main Grid */}
       <div
         // className="flex-1 grow relative min-w-0 min-h-0"
         ref={mainGridRef}
@@ -174,38 +132,26 @@ export default function Page() {
           )
           .map((item, index) => {
             return (
-              <div
-                // className="absolute"
-                // style={{
-                //   transform: `translate3d(${
-                //     // position.x + screenSize?.deltaX < 0 || position.x < screenSize.width
-                //     item.position.x + screenSize?.deltaX < 0 ||
-                //     item.position.x + screenSize.deltaX <
-                //       screenSize.width -
-                //         (pageData.otherData?.parentMargin.marginLeft +
-                //           pageData.otherData?.parentMargin.marginRight)
-                //       ? 0
-                //       : item.position.x + screenSize?.deltaX
-                //   }px, ${
-                //     item.position.y + screenSize?.deltaY < 0
-                //       ? 0
-                //       : item.position.y + screenSize?.deltaY
-                //   }px, 0)`,
-                // }}
+              // <div
+              //   key={item.id}
+              //   style={{
+              // width: item.size.width,
+              // height: item.size.height,
+              //   }}
+              // >
+              <DynamicElement
                 key={item.id}
-              >
-                <DynamicElement
-                  element={item}
-                  // handleInputChange={handleInputChange}
-                  // handlePositionChange={handlePositionChange}
-                  // previewMode={previewMode}
-                  input={item.input}
-                  tag={item.tag}
-                  id={item.id}
-                  mainGridRef={mainGridRef ? mainGridRef : null}
-                  shouldAdjustPosition={true}
-                />
-              </div>
+                element={item}
+                // handleInputChange={handleInputChange}
+                // handlePositionChange={handlePositionChange}
+                // previewMode={previewMode}
+                input={item.input}
+                tag={item.tag}
+                id={item.id}
+                mainGridRef={mainGridRef ? mainGridRef : null}
+                shouldAdjustPosition={true}
+              />
+              // </div>
             );
           })}
       </div>

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { PropsWithChildren } from "react";
-import { Draggable } from "@/app/ui/create/draggable";
 import { IDynamicElement } from "@/app/types/index";
 import { TextArea } from "@/app/ui/create/components/textArea";
 import { Header } from "@/app/ui/create/components/header";
@@ -65,7 +64,6 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
         } else if (adjustedX + elementWidth > gridWidth) {
           return gridWidth - elementWidth;
         }
-
         return adjustedX;
       } else if (pos === "Y") {
         const gridHeight = props.mainGridRef?.current?.offsetHeight;
@@ -86,7 +84,6 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
         } else if (adjustedY + elementHeight > gridHeight) {
           return gridHeight - elementHeight;
         }
-
         return adjustedY;
       }
     },
@@ -103,17 +100,17 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
 
   if (props.element.gridId) {
     return (
-      <div>
+      <>
         {CreateComponents.map((mappedComponent) => {
           if (mappedComponent.tag === props.element.tag) {
             const Component = mappedComponent.component || "div";
-            if (props.previewMode) {
-              return (
-                <div key={props.element.id}>
-                  <p>{props.input}</p>
-                </div>
-              );
-            }
+            // if (props.previewMode) {
+            //   return (
+            //     <div key={props.element.id}>
+            //       <p>{props.input}</p>
+            //     </div>
+            //   );
+            // }
             return (
               <div
                 key={props.element.id}
@@ -123,15 +120,21 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
                         transform: `translate3d(${calculatePosition(
                           "X"
                         )}px, ${calculatePosition("Y")}px, 0)`,
+                        width: props.element.size.width,
+                        height: props.element.size.height,
                       }
                     : null
                 }
               >
                 <Component
-                  position={props?.element.position}
-                  screenSize={screenSize}
-                  handleInputChange={props.handleInputChange}
                   id={props.element.id}
+                  input={props.element.input}
+                  style={{
+                    width: props.element.size.width,
+                    height: props.element.size.height,
+                  }}
+                  handleInputChange={props.handleInputChange}
+                  // id={props.element.id}
                   shouldAdjustPosition={props.shouldAdjustPosition}
                 />
               </div>
@@ -139,7 +142,7 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
           }
           return null;
         })}
-      </div>
+      </>
     );
   }
 
@@ -148,26 +151,6 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
       <div key={props.element.id}>
         <p>{props.input}</p>
       </div>
-    );
-  }
-
-  // if (props.element.tag == "textarea" && props.previewMode) {
-  //   console.log("props.previewMode", props.previewMode);
-  //   return <p>{textAreaInput.length > 0 ? textAreaInput : "No text"}</p>;
-  // }
-
-  if (props.element.tag == "textarea") {
-    return (
-      <>
-        <TextArea
-          placeholder="Enter your text here.."
-          // className={className}
-          isDropped={props.isDropped}
-          // TODO create a handle function and add slight debounce
-          onChange={(e) => props.input(item.id, e.target.value)}
-          // value={textAreaInput}
-        ></TextArea>
-      </>
     );
   }
 
