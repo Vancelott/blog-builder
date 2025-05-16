@@ -6,10 +6,12 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useParams } from "next/navigation";
-import { createBlogPost } from "@/app/lib/data";
+import { createBlogPost, createDraft } from "@/app/lib/data";
+import { useState } from "react";
 
 export default function Page() {
   const params = useParams<string>();
+  const [draftId, setDraftId] = useState<number>(null);
 
   const editor = useCreateBlockNote({
     initialContent: [
@@ -56,7 +58,15 @@ export default function Page() {
 
   const handleCreate = async () => {
     const HTMLFromBlocks = await editor.blocksToFullHTML(editor.document);
-    createBlogPost(params?.slug, HTMLFromBlocks);
+    createBlogPost(params?.slug, HTMLFromBlocks, editor.document);
+  };
+
+  const handleCreateDraft = async () => {
+    if (draftId === null) {
+      const draft = await createDraft(params?.slug, editor.document);
+      setDraftId(draft.id);
+    }
+    createDraft(params?.slug, draftId, editor.document);
   };
 
   return (
@@ -79,7 +89,7 @@ export default function Page() {
         />
       </div> */}
       <div className="w-4/5 lg:w-2/5 rounded-lg">
-        <BlockNoteView editor={editor} />
+        <BlockNoteView editor={editor} onChange={() => handleCreateDraft()} />
       </div>
     </div>
   );

@@ -17,7 +17,6 @@ export default function Page() {
         try {
           const data = await getBlogPost(params.post);
           if (!isDataFetched) {
-            console.log("data", data);
             setPost(data);
           }
         } catch (error) {

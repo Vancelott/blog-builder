@@ -7,6 +7,7 @@ import { IElement } from "@/app/types/index";
 import { findTitle } from "@/app/utils/helpers";
 import slugify from "slugify";
 import { redirect } from "next/navigation";
+import { Block } from "@blocknote/core";
 
 export const updateUser = async (prevState, formData: FormData) => {
   const session = await auth();
@@ -125,7 +126,11 @@ export const getBlogPost = async (slug: string) => {
   }
 };
 
-export const createBlogPost = async (blogSlug: string, htmlOutput: string) => {
+export const createBlogPost = async (
+  blogSlug: string,
+  htmlOutput: string,
+  editorData: Block[]
+) => {
   const session = await auth();
 
   const { id } = await getPage(blogSlug);
@@ -147,7 +152,6 @@ export const createBlogPost = async (blogSlug: string, htmlOutput: string) => {
       newSlug = slug + "-" + id;
       const isNewSlugAvailable = await getBlogPost(newSlug);
       if (isNewSlugAvailable === null) {
-        console.log("available slug:", newSlug);
         foundAvailableSlug = true;
       }
     }
@@ -156,12 +160,11 @@ export const createBlogPost = async (blogSlug: string, htmlOutput: string) => {
 
   try {
     const post = await pool.query(
-      `INSERT INTO blog_posts (page_id, slug, title, html, username)
-      VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO blog_posts (page_id, slug, title, html, username, editor_data)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *;`,
-      [id, slug, title, htmlOutput, session.user.name]
+      [id, slug, title, htmlOutput, session.user.name, JSON.stringify(editorData)]
     );
-    console.log("Post created:", post);
     // TODO return the post.rows or the slug and redirect?
     // return post.rows[0];
   } catch (error) {
@@ -170,4 +173,64 @@ export const createBlogPost = async (blogSlug: string, htmlOutput: string) => {
     return error;
   }
   redirect(`/${blogSlug}/${slug}`, "replace");
+};
+
+export const getDraftPost = async (postId: number) => {
+  try {
+    const draftHtml = await pool.query(
+      `SELECT editor_data FROM blog_posts
+        WHERE id = $1;`,
+      [postId]
+    );
+    return draftHtml.rows[0];
+  } catch (error) {
+    console.log(error);
+    // return error.issues[0];
+    return error;
+  }
+};
+
+// TODO add toasts?
+export const createDraft = async (
+  blogSlug: string,
+  postProp: number,
+  draftJson: Block[]
+) => {
+  const session = await auth();
+  const { id: pageId } = await getPage(blogSlug);
+
+  const parsedPostProp = parseInt(postProp);
+  const shouldUpdate = parsedPostProp ? getDraftPost(postProp) : null;
+
+  if (shouldUpdate && parsedPostId) {
+    try {
+      const post = await pool.query(
+        `UPDATE blog_posts 
+        SET editor_data = $1
+        WHERE id = $2 OR slug = $3 AND page_id = $4
+        RETURNING *;`,
+        [JSON.stringify(draftJson), parsedPostProp, postProp, pageId]
+      );
+      console.log("Post updated:", post.rows[0]);
+      return post.rows[0];
+    } catch (error) {
+      console.log(error);
+      // return error.issues[0];
+      return error;
+    }
+  }
+
+  try {
+    const post = await pool.query(
+      `INSERT INTO blog_posts (page_id, editor_data, username)
+      VALUES ($1, $2, $3)
+      RETURNING *;`,
+      [pageId, JSON.stringify(draftJson), session.user.name]
+    );
+    return post.rows[0];
+  } catch (error) {
+    console.log(error);
+    // return error.issues[0];
+    return error;
+  }
 };
