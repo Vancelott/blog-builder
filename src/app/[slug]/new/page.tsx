@@ -6,7 +6,7 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useParams } from "next/navigation";
-import { createBlogPost, createOrUpdateDraft } from "@/app/lib/data";
+import { createOrUpdateBlogPost, createOrUpdateDraft } from "@/app/lib/data";
 import { useState } from "react";
 
 export default function Page() {
@@ -58,15 +58,15 @@ export default function Page() {
 
   const handleCreate = async () => {
     const HTMLFromBlocks = await editor.blocksToFullHTML(editor.document);
-    createBlogPost(params?.slug, HTMLFromBlocks, editor.document);
+    createOrUpdateBlogPost(params?.slug, HTMLFromBlocks, editor.document, "");
   };
 
   const handleSaveDraft = async () => {
     if (draftId === null) {
-      const draft = await createOrUpdateDraft(params?.slug, editor.document);
+      const draft = await createOrUpdateDraft(params?.slug, "", editor.document);
+      console.log("draft:", draft);
       setDraftId(draft.id);
     }
-    console.log(draftId);
     createOrUpdateDraft(params?.slug, draftId, editor.document);
   };
 

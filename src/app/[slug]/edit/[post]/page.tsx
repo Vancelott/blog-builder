@@ -8,7 +8,7 @@ import { getBlogPost, getDraftPost } from "@/app/lib/data";
 import { useParams } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import "@blocknote/shadcn/style.css";
-import { createOrUpdateDraft, createBlogPost } from "@/app/lib/data";
+import { createOrUpdateDraft, createOrUpdateBlogPost } from "@/app/lib/data";
 import { Button } from "@/components/ui/button";
 
 export default function Page() {
@@ -16,7 +16,7 @@ export default function Page() {
   const [initialContent, setInitialContent] = useState<
     PartialBlock[] | undefined | "loading"
   >("loading");
-  const isDraft = parseInt(params.post);
+  const [postSlug, setPostSlug] = useState<string>("");
 
   const editor = useMemo(() => {
     if (initialContent === "loading") {
@@ -25,27 +25,25 @@ export default function Page() {
     return BlockNoteEditor.create({ initialContent });
   }, [initialContent]);
 
-  // const editorPost = useCreateBlockNote();
-
   useEffect(() => {
     let isDataFetched = false;
 
     const fetchPageContent = async () => {
       if (params) {
+        const isDraft = parseInt(params.post);
+
         try {
           let data;
 
           if (isDraft) {
-            const { editor_data } = await getDraftPost(params.post);
-            data = JSON.parse(editor_data) as PartialBlock[];
+            const draft = await getDraftPost(params.post);
+            data = JSON.parse(draft.editor_data) as PartialBlock[];
+            console.log(data);
           } else {
-            // const { html } = await getBlogPost(params.post);
-            // const blocksFromHTML = await editorPost.tryParseHTMLToBlocks(html);
-            // editorPost.replaceBlocks(editorPost.document, blocksFromHTML);
-            // data = blocksFromHTML;
-            // setIsPost(true);
             const post = await getBlogPost(params.post);
             data = JSON.parse(post.editor_data) as PartialBlock[];
+            console.log(data);
+            setPostSlug(post.slug);
           }
           if (!isDataFetched) {
             setInitialContent(data);
@@ -62,11 +60,11 @@ export default function Page() {
     return () => {
       isDataFetched = true;
     };
-  }, [isDraft, params]);
+  }, [params]);
 
-  const handleCreate = async () => {
+  const handleCreateOrUpdate = async () => {
     const HTMLFromBlocks = await editor.blocksToFullHTML(editor.document);
-    createBlogPost(params?.slug, HTMLFromBlocks, editor.document);
+    createOrUpdateBlogPost(params?.slug, HTMLFromBlocks, editor.document, postSlug);
   };
 
   // TODO add debounce?
@@ -82,8 +80,12 @@ export default function Page() {
   return (
     <div className="flex flex-col w-full justify-center items-center bg-editor-gray overflow-y-scroll overflow-x-hidden h-screen">
       <div className="flex flex-row w-screen gap-2 bg-gray-700 border-b-2 border-gray-800 px-8 sm:px-16 py-6 mb-10 rounded-lg align-top sticky top-0 place-content-end z-20">
-        <Button className=" bg-orange-500" size="lg" onClick={() => handleCreate()}>
-          {isDraft ? "Create" : "Update"}
+        <Button
+          className=" bg-orange-500"
+          size="lg"
+          onClick={() => handleCreateOrUpdate()}
+        >
+          {!postSlug ? "Create" : "Update"}
         </Button>
       </div>
       <div className="w-4/5 lg:w-2/5 rounded-lg">

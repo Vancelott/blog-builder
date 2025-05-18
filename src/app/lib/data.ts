@@ -125,7 +125,7 @@ export const getBlogPost = async (slug: string) => {
   }
 };
 
-export const createBlogPost = async (
+const createBlogPost = async (
   blogSlug: string,
   htmlOutput: string,
   editorData: Block[]
@@ -135,7 +135,6 @@ export const createBlogPost = async (
   const { id } = await getPage(blogSlug);
 
   const title = findTitle(htmlOutput);
-  console.log("title", title);
   let slug = slugify(title, {
     strict: true,
     lower: true,
@@ -159,20 +158,55 @@ export const createBlogPost = async (
   }
 
   try {
-    const post = await pool.query(
+    await pool.query(
       `INSERT INTO blog_posts (page_id, slug, title, html, username, editor_data)
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *;`,
       [id, slug, title, htmlOutput, session.user.name, JSON.stringify(editorData)]
     );
-    // TODO return the post.rows or the slug and redirect?
-    // return post.rows[0];
   } catch (error) {
     console.log(error);
     // return error.issues[0];
     return error;
   }
   redirect(`/${blogSlug}/${slug}`, "replace");
+};
+
+const updateBlogPost = async (
+  blogSlug: string,
+  htmlOutput: string,
+  editorData: Block[],
+  postSlug: string
+) => {
+  try {
+    const editedAt = new Date();
+
+    await pool.query(
+      `UPDATE blog_posts
+      SET html = $1, editor_data = $2, edited_at = $3
+      WHERE slug = $4
+      RETURNING *;`,
+      [htmlOutput, JSON.stringify(editorData), editedAt, postSlug]
+    );
+  } catch (error) {
+    console.log(error);
+    // return error.issues[0];
+    return error;
+  }
+  redirect(`/${blogSlug}/${postSlug}`, "replace");
+};
+
+export const createOrUpdateBlogPost = async (
+  blogSlug: string,
+  htmlOutput: string,
+  editorData: Block[],
+  postSlug: string
+) => {
+  if (!postSlug) {
+    await createBlogPost(blogSlug, htmlOutput, editorData);
+  } else {
+    await updateBlogPost(blogSlug, htmlOutput, editorData, postSlug);
+  }
 };
 
 export const getDraftPost = async (postId: number) => {
@@ -223,14 +257,12 @@ const updateDraft = async (
   const parsedPostProp = isNaN(parseInt(postProp)) ? -1 : parseInt(postProp);
 
   try {
-    const editedAt = new Date();
-
     const post = await pool.query(
       `UPDATE blog_posts 
-        SET editor_data = $1, edited_at = $2
-        WHERE (id = $3 OR slug = $4) AND page_id = $5
+        SET editor_data = $1
+        WHERE (id = $2 OR slug = $3) AND page_id = $4
         RETURNING *;`,
-      [JSON.stringify(draftJson), editedAt, parsedPostProp, postProp, pageId]
+      [JSON.stringify(draftJson), parsedPostProp, postProp, pageId]
     );
     return post.rows[0];
   } catch (error) {

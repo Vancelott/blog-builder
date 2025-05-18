@@ -4,6 +4,7 @@ import { getBlogPost } from "@/app/lib/data";
 import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import "@blocknote/shadcn/style.css";
+import BlogPostData from "@/app/ui/slug/blogPostData";
 
 export default function Page() {
   const params = useParams<string>();
@@ -40,7 +41,22 @@ export default function Page() {
         Back
       </button> */}
       <div className="w-4/5 lg:w-2/5 rounded-lg">
-        {/* TODO update this when you've added dark/light mode */}
+        <BlogPostData
+          img=""
+          createdAt={post?.created_at?.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}
+          editedAt={post?.edited_at?.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "numeric",
+            minute: "numeric",
+          })}
+        />
+        {/* TODO update this when you've added dark/light mode. Maybe use `BlockNoteView` in order to utilize `theme` */}
         <div className="bn-container dark bn-shadcn" data-color-scheme="dark">
           <div
             className="bn-default-styles"
