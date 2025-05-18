@@ -117,7 +117,6 @@ export const getBlogPost = async (slug: string) => {
     if (post.rows.length === 0) {
       return null;
     }
-
     return post.rows[0];
   } catch (error) {
     console.log(error);
@@ -136,6 +135,7 @@ export const createBlogPost = async (
   const { id } = await getPage(blogSlug);
 
   const title = findTitle(htmlOutput);
+  console.log("title", title);
   let slug = slugify(title, {
     strict: true,
     lower: true,
@@ -177,12 +177,12 @@ export const createBlogPost = async (
 
 export const getDraftPost = async (postId: number) => {
   try {
-    const draftHtml = await pool.query(
-      `SELECT editor_data FROM blog_posts
+    const draft = await pool.query(
+      `SELECT * FROM blog_posts
         WHERE id = $1;`,
       [postId]
     );
-    return draftHtml.rows[0];
+    return draft.rows[0];
   } catch (error) {
     console.log(error);
     // return error.issues[0];
@@ -191,34 +191,13 @@ export const getDraftPost = async (postId: number) => {
 };
 
 // TODO add toasts?
-export const createDraft = async (
+const createDraft = async (
   blogSlug: string,
-  postProp: number,
+  postProp: number | string,
   draftJson: Block[]
 ) => {
   const session = await auth();
   const { id: pageId } = await getPage(blogSlug);
-
-  const parsedPostProp = parseInt(postProp);
-  const shouldUpdate = parsedPostProp ? getDraftPost(postProp) : null;
-
-  if (shouldUpdate && parsedPostId) {
-    try {
-      const post = await pool.query(
-        `UPDATE blog_posts 
-        SET editor_data = $1
-        WHERE id = $2 OR slug = $3 AND page_id = $4
-        RETURNING *;`,
-        [JSON.stringify(draftJson), parsedPostProp, postProp, pageId]
-      );
-      console.log("Post updated:", post.rows[0]);
-      return post.rows[0];
-    } catch (error) {
-      console.log(error);
-      // return error.issues[0];
-      return error;
-    }
-  }
 
   try {
     const post = await pool.query(
@@ -232,5 +211,48 @@ export const createDraft = async (
     console.log(error);
     // return error.issues[0];
     return error;
+  }
+};
+
+const updateDraft = async (
+  blogSlug: string,
+  postProp: number | string,
+  draftJson: Block[]
+) => {
+  const { id: pageId } = await getPage(blogSlug);
+  const parsedPostProp = isNaN(parseInt(postProp)) ? -1 : parseInt(postProp);
+
+  try {
+    const editedAt = new Date();
+
+    const post = await pool.query(
+      `UPDATE blog_posts 
+        SET editor_data = $1, edited_at = $2
+        WHERE (id = $3 OR slug = $4) AND page_id = $5
+        RETURNING *;`,
+      [JSON.stringify(draftJson), editedAt, parsedPostProp, postProp, pageId]
+    );
+    return post.rows[0];
+  } catch (error) {
+    console.log(error);
+    // return error.issues[0];
+    return error;
+  }
+};
+
+export const createOrUpdateDraft = async (
+  blogSlug: string,
+  postProp: number | string,
+  draftJson: Block[]
+) => {
+  const parsedPostProp = isNaN(parseInt(postProp)) ? -1 : parseInt(postProp);
+
+  const shouldUpdate =
+    parsedPostProp > 0 ? await getDraftPost(parsedPostProp) : await getBlogPost(postProp);
+
+  if (shouldUpdate) {
+    return await updateDraft(blogSlug, postProp, draftJson);
+  } else {
+    return await createDraft(blogSlug, postProp, draftJson);
   }
 };

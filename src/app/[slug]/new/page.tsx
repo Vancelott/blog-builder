@@ -6,7 +6,7 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useParams } from "next/navigation";
-import { createBlogPost, createDraft } from "@/app/lib/data";
+import { createBlogPost, createOrUpdateDraft } from "@/app/lib/data";
 import { useState } from "react";
 
 export default function Page() {
@@ -61,20 +61,18 @@ export default function Page() {
     createBlogPost(params?.slug, HTMLFromBlocks, editor.document);
   };
 
-  const handleCreateDraft = async () => {
+  const handleSaveDraft = async () => {
     if (draftId === null) {
-      const draft = await createDraft(params?.slug, editor.document);
+      const draft = await createOrUpdateDraft(params?.slug, editor.document);
       setDraftId(draft.id);
     }
-    createDraft(params?.slug, draftId, editor.document);
+    console.log(draftId);
+    createOrUpdateDraft(params?.slug, draftId, editor.document);
   };
 
   return (
     <div className="flex flex-col w-full justify-center items-center bg-editor-gray overflow-y-scroll overflow-x-hidden h-screen">
       <div className="flex flex-row w-screen gap-2 bg-gray-700 border-b-2 border-gray-800 px-8 sm:px-16 py-6 mb-10 rounded-lg align-top sticky top-0 place-content-end z-20">
-        <Button className="bg-orange-800" size="lg">
-          Save Draft
-        </Button>
         <Button className=" bg-orange-500" size="lg" onClick={() => handleCreate()}>
           Create
         </Button>
@@ -89,7 +87,7 @@ export default function Page() {
         />
       </div> */}
       <div className="w-4/5 lg:w-2/5 rounded-lg">
-        <BlockNoteView editor={editor} onChange={() => handleCreateDraft()} />
+        <BlockNoteView editor={editor} onChange={() => handleSaveDraft()} />
       </div>
     </div>
   );

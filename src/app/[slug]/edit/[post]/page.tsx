@@ -8,7 +8,7 @@ import { getBlogPost, getDraftPost } from "@/app/lib/data";
 import { useParams } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import "@blocknote/shadcn/style.css";
-import { createDraft, createBlogPost } from "@/app/lib/data";
+import { createOrUpdateDraft, createBlogPost } from "@/app/lib/data";
 import { Button } from "@/components/ui/button";
 
 export default function Page() {
@@ -71,7 +71,7 @@ export default function Page() {
 
   // TODO add debounce?
   const handleSaveDraft = async () => {
-    createDraft(params?.slug, params.post, editor.document);
+    createOrUpdateDraft(params?.slug, params.post, editor.document);
   };
 
   // TODO handle editor load
