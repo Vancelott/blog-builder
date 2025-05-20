@@ -6,12 +6,18 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useParams } from "next/navigation";
-import { createOrUpdateBlogPost, createOrUpdateDraft } from "@/app/lib/data";
-import { useState } from "react";
+import { createOrUpdateBlogPost, createOrUpdateDraft, getPage } from "@/app/lib/data";
+import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { notFound } from "next/navigation";
+import BlogPostSkeleton from "@/app/ui/slug/blogPostSkeleton";
 
 export default function Page() {
   const params = useParams<string>();
   const [draftId, setDraftId] = useState<number>(null);
+  const { toast } = useToast();
+  const [doesBlogExist, setDoesBlogExist] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const editor = useCreateBlockNote({
     initialContent: [
@@ -56,19 +62,82 @@ export default function Page() {
     ],
   });
 
+  useEffect(() => {
+    let isDataFetched = false;
+
+    const fetchPageData = async () => {
+      setIsLoading(true);
+
+      if (params) {
+        try {
+          setDoesBlogExist(false);
+          const blog = await getPage(params.slug);
+
+          if (!isDataFetched && !blog) {
+            setDoesBlogExist(false);
+          } else {
+            setDoesBlogExist(true);
+          }
+        } catch (error) {
+          if (!isDataFetched) {
+            console.error("Failed to fetch data", error);
+          }
+        }
+        setIsLoading(false);
+      }
+    };
+
+    fetchPageData();
+    return () => {
+      isDataFetched = true;
+    };
+  }, [params, toast]);
+
   const handleCreate = async () => {
     const HTMLFromBlocks = await editor.blocksToFullHTML(editor.document);
-    createOrUpdateBlogPost(params?.slug, HTMLFromBlocks, editor.document, "");
+    const post = await createOrUpdateBlogPost(
+      params?.slug,
+      HTMLFromBlocks,
+      editor.document,
+      ""
+    );
+
+    if (post.error) {
+      toast({
+        title: "Uh oh! Something went wrong.",
+        description: post.error,
+      });
+    }
   };
 
   const handleSaveDraft = async () => {
     if (draftId === null) {
       const draft = await createOrUpdateDraft(params?.slug, "", editor.document);
-      console.log("draft:", draft);
+      if (draft.error) {
+        toast({
+          title: "Uh oh! Something went wrong.",
+          description: draft.error ? draft.error : "",
+        });
+        return;
+      }
       setDraftId(draft.id);
+    } else if (draftId !== null) {
+      const draft = await createOrUpdateDraft(params?.slug, draftId, editor.document);
+
+      if (draft.error) {
+        toast({
+          title: "Uh oh! Something went wrong.",
+          description: draft.error ? draft.error : "",
+        });
+      }
     }
-    createOrUpdateDraft(params?.slug, draftId, editor.document);
   };
+
+  if (!doesBlogExist && !isLoading) {
+    notFound();
+  } else if (isLoading) {
+    return <BlogPostSkeleton edit={true} userData={true} />;
+  }
 
   return (
     <div className="flex flex-col w-full justify-center items-center bg-editor-gray overflow-y-scroll overflow-x-hidden h-screen">
@@ -77,15 +146,6 @@ export default function Page() {
           Create
         </Button>
       </div>
-      {/* TODO Allow the user to add an image here as well? */}
-      {/* <div className="w-screen h-3/6 absolute top-0">
-        <Image
-          src="/defaultBlogPhoto.jpg"
-          alt="Cover image"
-          objectFit="cover"
-          fill={true}
-        />
-      </div> */}
       <div className="w-4/5 lg:w-2/5 rounded-lg">
         <BlockNoteView editor={editor} onChange={() => handleSaveDraft()} />
       </div>

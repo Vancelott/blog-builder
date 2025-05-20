@@ -10,6 +10,9 @@ import { useState, useEffect, useMemo } from "react";
 import "@blocknote/shadcn/style.css";
 import { createOrUpdateDraft, createOrUpdateBlogPost } from "@/app/lib/data";
 import { Button } from "@/components/ui/button";
+import { notFound } from "next/navigation";
+import BlogPostSkeleton from "@/app/ui/slug/blogPostSkeleton";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Page() {
   const params = useParams<string>();
@@ -17,7 +20,9 @@ export default function Page() {
     PartialBlock[] | undefined | "loading"
   >("loading");
   const [postSlug, setPostSlug] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  const { toast } = useToast();
   const editor = useMemo(() => {
     if (initialContent === "loading") {
       return undefined;
@@ -31,19 +36,22 @@ export default function Page() {
     const fetchPageContent = async () => {
       if (params) {
         const isDraft = parseInt(params.post);
+        setIsLoading(true);
 
         try {
           let data;
 
           if (isDraft) {
             const draft = await getDraftPost(params.post);
-            data = JSON.parse(draft.editor_data) as PartialBlock[];
-            console.log(data);
+            if (draft) {
+              data = JSON.parse(draft.editor_data) as PartialBlock[];
+            }
           } else {
             const post = await getBlogPost(params.post);
-            data = JSON.parse(post.editor_data) as PartialBlock[];
-            console.log(data);
-            setPostSlug(post.slug);
+            if (post) {
+              data = JSON.parse(post.editor_data) as PartialBlock[];
+              setPostSlug(post.slug);
+            }
           }
           if (!isDataFetched) {
             setInitialContent(data);
@@ -52,7 +60,9 @@ export default function Page() {
           if (!isDataFetched) {
             console.error("Failed to fetch data", error);
           }
+          setInitialContent(null);
         }
+        setIsLoading(false);
       }
     };
 
@@ -64,17 +74,39 @@ export default function Page() {
 
   const handleCreateOrUpdate = async () => {
     const HTMLFromBlocks = await editor.blocksToFullHTML(editor.document);
-    createOrUpdateBlogPost(params?.slug, HTMLFromBlocks, editor.document, postSlug);
+    const post = await createOrUpdateBlogPost(
+      params?.slug,
+      HTMLFromBlocks,
+      editor.document,
+      postSlug
+    );
+    if (post.error) {
+      toast({
+        title: "Uh oh! Something went wrong.",
+        description: post.error ? post.error : "",
+      });
+      return;
+    }
   };
 
   // TODO add debounce?
   const handleSaveDraft = async () => {
-    createOrUpdateDraft(params?.slug, params.post, editor.document);
+    const draft = await createOrUpdateDraft(params?.slug, params.post, editor.document);
+    if (draft.error) {
+      toast({
+        title: "Uh oh! Something went wrong.",
+        description: draft.error ? draft.error : "",
+      });
+      return;
+    }
   };
 
-  // TODO handle editor load
   if (editor === undefined) {
-    return "Loading content...";
+    return <BlogPostSkeleton edit={true} />;
+  }
+
+  if (!initialContent && !isLoading) {
+    notFound();
   }
 
   return (

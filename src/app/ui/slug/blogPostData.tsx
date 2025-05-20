@@ -19,7 +19,6 @@ export default function BlogPostData(props: PropsWithChildren<IBlogPostData>) {
             <PersonIcon style={{ color: "black" }} className="w-6 h-6" />
           </AvatarFallback>
         </Avatar>
-        {/* <div className="flex flex-col justify-end text-right"> */}
         <div className="flex flex-col sm:justify-normal text-right">
           {props.createdAt ? (
             <p className="text-white text-md sm:text-lg">{props.createdAt}</p>

@@ -3,7 +3,7 @@
 import { pool } from "@/app/lib/db";
 import { auth } from "@/app/auth";
 import { z } from "zod";
-import { IElement } from "@/app/types/index";
+import { IElement, IOtherData } from "@/app/types/index";
 import { findTitle } from "@/app/utils/helpers";
 import slugify from "slugify";
 import { redirect } from "next/navigation";
@@ -33,18 +33,15 @@ export const updateUser = async (prevState, formData: FormData) => {
       [formName, session.user.email]
     );
     return { success: true };
-  } catch (error) {
-    console.log(error);
-    // TODO refactor this once you add photo upload
-    return error.issues[0];
+  } catch {
+    return { error: "The blog page could not be created, please try again." };
   }
 };
 
-// export const createPage = async ({ data }: IElement[]) => {
-export const createPage = async (data, otherData) => {
+export const createPage = async (data: IElement[], otherData: IOtherData) => {
   const session = await auth();
-  console.log("otherData", otherData);
 
+  // TODO handle this error when slugs are implemented for the blog pages
   if (!session.user.name) {
     console.log("no username");
     return;
@@ -52,7 +49,6 @@ export const createPage = async (data, otherData) => {
 
   try {
     // TODO pass the data correctly, atm the column is set as JSONB, but you are passing an array of objects fix either of the two
-    console.log("data", data);
     const page = await pool.query(
       `SELECT * FROM pages
       WHERE slug = $1;`,
@@ -67,12 +63,6 @@ export const createPage = async (data, otherData) => {
       return { success: true };
     } else {
       // TODO once done, remove the update if you don't create a separate update handler
-      // await pool.query(
-      //   `UPDATE pages
-      // SET data = $1
-      // WHERE slug = $2;`,
-      //   [data, session.user.name]
-      // );
       await pool.query(
         `UPDATE pages
          SET data = $1, other_data = $2
@@ -80,10 +70,8 @@ export const createPage = async (data, otherData) => {
         [data, otherData, session.user.name]
       );
     }
-  } catch (error) {
-    console.log(error);
-    // return error.issues[0];
-    return error;
+  } catch {
+    return { error: "The blog page could not be created, please try again." };
   }
 };
 
@@ -94,16 +82,19 @@ export const getPage = async (slug: string) => {
       WHERE slug = $1;`,
       [slug]
     );
-    // console.log("page", page);
+
+    if (page.rows.length === 0) {
+      console.log("page.rows[0]", page.rows[0]);
+      return null;
+    }
+
     return await {
       data: page.rows[0].data,
       otherData: page.rows[0].other_data,
       id: page.rows[0].id,
     };
-  } catch (error) {
-    console.log(error);
-    // return error.issues[0];
-    return error;
+  } catch {
+    return { error: "The page could not be loaded, please try again." };
   }
 };
 
@@ -118,10 +109,8 @@ export const getBlogPost = async (slug: string) => {
       return null;
     }
     return post.rows[0];
-  } catch (error) {
-    console.log(error);
-    // return error.issues[0];
-    return error;
+  } catch {
+    return { error: "The blog post could not be loaded, please try again." };
   }
 };
 
@@ -164,12 +153,13 @@ const createBlogPost = async (
       RETURNING *;`,
       [id, slug, title, htmlOutput, session.user.name, JSON.stringify(editorData)]
     );
-  } catch (error) {
-    console.log(error);
-    // return error.issues[0];
-    return error;
+  } catch {
+    return { error: "Failed to create blog post, please try again." };
   }
-  redirect(`/${blogSlug}/${slug}`, "replace");
+  const post = await getBlogPost(slug);
+  if (post) {
+    redirect(`/${blogSlug}/${slug}`, "replace");
+  }
 };
 
 const updateBlogPost = async (
@@ -188,10 +178,8 @@ const updateBlogPost = async (
       RETURNING *;`,
       [htmlOutput, JSON.stringify(editorData), editedAt, postSlug]
     );
-  } catch (error) {
-    console.log(error);
-    // return error.issues[0];
-    return error;
+  } catch {
+    return { error: "The blog post could not be updated, please try again." };
   }
   redirect(`/${blogSlug}/${postSlug}`, "replace");
 };
@@ -203,9 +191,9 @@ export const createOrUpdateBlogPost = async (
   postSlug: string
 ) => {
   if (!postSlug) {
-    await createBlogPost(blogSlug, htmlOutput, editorData);
+    return await createBlogPost(blogSlug, htmlOutput, editorData);
   } else {
-    await updateBlogPost(blogSlug, htmlOutput, editorData, postSlug);
+    return await updateBlogPost(blogSlug, htmlOutput, editorData, postSlug);
   }
 };
 
@@ -217,14 +205,11 @@ export const getDraftPost = async (postId: number) => {
       [postId]
     );
     return draft.rows[0];
-  } catch (error) {
-    console.log(error);
-    // return error.issues[0];
-    return error;
+  } catch {
+    return { error: "The draft post could not be located, please try again." };
   }
 };
 
-// TODO add toasts?
 const createDraft = async (
   blogSlug: string,
   postProp: number | string,
@@ -241,10 +226,8 @@ const createDraft = async (
       [pageId, JSON.stringify(draftJson), session.user.name]
     );
     return post.rows[0];
-  } catch (error) {
-    console.log(error);
-    // return error.issues[0];
-    return error;
+  } catch {
+    return { error: "The draft could not be created, please try again." };
   }
 };
 
@@ -265,10 +248,8 @@ const updateDraft = async (
       [JSON.stringify(draftJson), parsedPostProp, postProp, pageId]
     );
     return post.rows[0];
-  } catch (error) {
-    console.log(error);
-    // return error.issues[0];
-    return error;
+  } catch {
+    return { error: "The draft could not be updated, please try again." };
   }
 };
 

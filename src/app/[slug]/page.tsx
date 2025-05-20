@@ -6,6 +6,8 @@ import { useWindowSize } from "@uidotdev/usehooks";
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { SlugPageData } from "@/app/types/index";
+import { notFound } from "next/navigation";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function Page() {
   const params = useParams<string>();
@@ -15,16 +17,17 @@ export default function Page() {
   });
   const mainGridRef = useRef(null);
   const screenSize = useWindowSize();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     let isDataFetched = false;
 
     const fetchPageData = async () => {
       if (params) {
+        setIsLoading(true);
         try {
           const data = await getPage(params.slug);
           if (!isDataFetched) {
-            console.log("data", data);
             setPageData(data);
           }
         } catch (error) {
@@ -32,6 +35,7 @@ export default function Page() {
             console.error("Failed to fetch data", error);
           }
         }
+        setIsLoading(false);
       }
     };
 
@@ -41,8 +45,14 @@ export default function Page() {
     };
   }, [params]);
 
-  if (!pageData.data) {
-    return <p>Loading</p>;
+  if (!pageData.data && !isLoading) {
+    notFound();
+  } else if (!pageData.data) {
+    return (
+      <div className="flex bg-editor-gray justify-center place-items-center h-screen w-full ">
+        <Spinner size="lg" className="bg-white" />
+      </div>
+    );
   }
 
   if (screenSize.width < 700) {

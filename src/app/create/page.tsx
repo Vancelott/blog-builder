@@ -2,7 +2,7 @@
 
 import { DynamicElement } from "@/app/ui/create/dynamicElement";
 import { useState, useCallback } from "react";
-import { IElement } from "@/app/types/index";
+import { IElement, IOtherData } from "@/app/types/index";
 import { createPage } from "@/app/lib/data";
 import {
   DndContext,
@@ -222,7 +222,7 @@ export default function Page() {
   };
 
   const handleCreatePage = () => {
-    createPage(addedContent, { parentMargin: parentMargin });
+    createPage(addedContent, { parentMargin: parentMargin } as IOtherData);
   };
 
   const handleSubmit = async (elementId: number) => {

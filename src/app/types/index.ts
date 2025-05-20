@@ -48,3 +48,19 @@ export interface SlugPageData {
   data: IElement[];
   otherData: { [key: string]: object | string | number } | null;
 }
+
+export interface IOtherData {
+  parentMargin: { [key: string]: number } | null;
+}
+
+export interface IBlogPost {
+  id: number;
+  page_id: number;
+  slug: string;
+  title: string;
+  html: string;
+  username: string;
+  created_at: Date;
+  edited_at: Date;
+  editor_data: string;
+}
