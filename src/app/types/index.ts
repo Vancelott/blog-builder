@@ -1,3 +1,6 @@
+import { ResizeCallback } from "re-resizable";
+import { DragEndEvent } from "@dnd-kit/core";
+
 export type Resize = {
   height: number | string;
   width: number | string;
@@ -63,4 +66,52 @@ export interface IBlogPost {
   created_at: Date;
   edited_at: Date;
   editor_data: string;
+}
+
+export interface ICalculateDelta {
+  resizingComp: IElement;
+  collidingComp: IElement;
+  resizingCompDelta: number;
+  pos: string;
+}
+
+export interface ISwapPositions {
+  addedContent: IElement[];
+  setAddedContent: React.Dispatch<React.SetStateAction<IElement[]>>;
+  draggedComponent: IElement;
+  newStatus: string | number;
+}
+
+export interface IUpdateCompSize {
+  resizingComp: IElement;
+  isResizingCompColliding: IElement[] | null;
+  compId: number;
+  d: ResizeCallback.delta;
+  calculateDelta: (
+    resizingComp: IElement,
+    item: IElement,
+    delta: number,
+    pos: string
+  ) => void;
+  setAddedContent: React.Dispatch<React.SetStateAction<IElement[]>>;
+}
+
+export interface IUpdateParentMargin {
+  setParentMargin: React.Dispatch<React.SetStateAction<{ [name: string]: number }>>;
+  componentRefs: React.RefObject<Map<string, HTMLDivElement>>;
+}
+
+export interface IUpdatePosition {
+  setAddedContent: React.Dispatch<React.SetStateAction<IElement[]>>;
+  elementId: string;
+  newStatus: string | number;
+  delta: DragEndEvent;
+}
+
+export interface IValidatePosition {
+  delta: DragEndEvent;
+  draggedComponent: IElement;
+  screenSize: { [name: string]: number };
+  parentMargin: { [name: string]: number };
+  isParentComponent: IElement;
 }

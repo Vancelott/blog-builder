@@ -22,17 +22,20 @@ import {
 import { PositionButtons } from "@/app/ui/create/components/positionButtons";
 import { useState } from "react";
 
+// TODO add an interface
 export default function FloatingToolbar(props) {
   const {
     handlePositionChange,
     handlePreviewMode,
     handleGridMode,
     handleSelect,
-    handleCreatePage,
+    shouldCreateOrUpdate,
+    editorProps,
     selectedComponent,
     toggleComponentDraggable,
-  } = props.props;
+  } = props;
   const [isToggled, setIsToggled] = useState<{ [btnName: string]: boolean }>({});
+  const { edit } = editorProps;
 
   return (
     <TooltipProvider>
@@ -189,8 +192,11 @@ export default function FloatingToolbar(props) {
               <TooltipContent>Add</TooltipContent>
             </Tooltip>
 
-            <Button onClick={() => handleCreatePage()} className="hover:bg-cyan-700 h-10">
-              Create
+            <Button
+              onClick={() => shouldCreateOrUpdate()}
+              className="hover:bg-cyan-700 h-10"
+            >
+              {edit ? "Edit" : "Create"}
             </Button>
             {/* <Tooltip>
             <TooltipTrigger asChild>

@@ -127,6 +127,7 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
                 }
               >
                 <Component
+                  positionClass={props.element.positionClass}
                   id={props.element.id}
                   input={props.element.input}
                   style={{
@@ -134,9 +135,16 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
                     height: props.element.size.height,
                   }}
                   handleInputChange={props.handleInputChange}
-                  // id={props.element.id}
                   shouldAdjustPosition={props.shouldAdjustPosition}
-                />
+                >
+                  <div className="z-20 mt-8"></div>
+                  {props.childElements && props.element && (
+                    <ChildElements
+                      childElements={props.childElements}
+                      draggableRef={props.draggableRef}
+                    />
+                  )}
+                </Component>
               </div>
             );
           }
@@ -146,35 +154,27 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
     );
   }
 
-  if (props.element.gridId && props.previewMode) {
-    return (
-      <div key={props.element.id}>
-        <p>{props.input}</p>
-      </div>
-    );
-  }
-
-  if (props.element.tag == "nav bar") {
-    return (
-      <UserNavBar
-        positionClass={props.element.positionClass}
-        ref={props.ref}
-        size={props.element.size}
-        placement={props.element.position}
-        tempSizeDelta={
-          props.tempSizeDelta?.id == props.element.id ? props.tempSizeDelta : null
-        }
-      >
-        <div className="z-20 mt-8"></div>
-        {props.childElements && props.element && (
-          <ChildElements
-            childElements={props.childElements}
-            draggableRef={props.draggableRef}
-          />
-        )}
-      </UserNavBar>
-    );
-  }
+  // if (props.element.tag == "nav bar") {
+  //   return (
+  //     <UserNavBar
+  //       positionClass={props.element.positionClass}
+  //       ref={props.ref}
+  //       size={props.element.size}
+  //       placement={props.element.position}
+  //       tempSizeDelta={
+  //         props.tempSizeDelta?.id == props.element.id ? props.tempSizeDelta : null
+  //       }
+  //     >
+  //       <div className="z-20 mt-8"></div>
+  //       {props.childElements && props.element && (
+  //         <ChildElements
+  //           childElements={props.childElements}
+  //           draggableRef={props.draggableRef}
+  //         />
+  //       )}
+  //     </UserNavBar>
+  //   );
+  // }
 
   if (props.element.tag === "header") {
     return (

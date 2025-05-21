@@ -49,29 +49,37 @@ export const createPage = async (data: IElement[], otherData: IOtherData) => {
 
   try {
     // TODO pass the data correctly, atm the column is set as JSONB, but you are passing an array of objects fix either of the two
-    const page = await pool.query(
-      `SELECT * FROM pages
-      WHERE slug = $1;`,
-      [session.user.name]
-    );
-    if (!page) {
-      await pool.query(
-        `INSERT INTO pages (userId, slug, data, blog_ids, other_data)
+    await pool.query(
+      `INSERT INTO pages (userId, slug, data, blog_ids, other_data)
       VALUES ($1, $2, $3, '{}', $4);`,
-        [session.user.id, session.user.name, data, otherData]
-      );
-      return { success: true };
-    } else {
-      // TODO once done, remove the update if you don't create a separate update handler
-      await pool.query(
-        `UPDATE pages
-         SET data = $1, other_data = $2
-         WHERE slug = $3;`,
-        [data, otherData, session.user.name]
-      );
-    }
+      [session.user.id, session.user.name, data, otherData]
+    );
+    return { success: true };
   } catch {
     return { error: "The blog page could not be created, please try again." };
+  }
+};
+
+// TODO add reroutes for both createPage/updatePage
+export const updatePage = async (data: IElement[], otherData: IOtherData) => {
+  const session = await auth();
+
+  // TODO handle this error when slugs are implemented for the blog pages
+  if (!session.user.name) {
+    console.log("no username");
+    return;
+  }
+
+  try {
+    await pool.query(
+      `UPDATE pages
+       SET data = $1, other_data = $2
+       WHERE slug = $3;`,
+      [data, otherData, session.user.name]
+    );
+    return { success: true };
+  } catch {
+    return { error: "The blog page could not be updated, please try again." };
   }
 };
 
@@ -84,7 +92,6 @@ export const getPage = async (slug: string) => {
     );
 
     if (page.rows.length === 0) {
-      console.log("page.rows[0]", page.rows[0]);
       return null;
     }
 

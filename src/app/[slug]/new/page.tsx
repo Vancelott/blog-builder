@@ -15,9 +15,9 @@ import BlogPostSkeleton from "@/app/ui/slug/blogPostSkeleton";
 export default function Page() {
   const params = useParams<string>();
   const [draftId, setDraftId] = useState<number>(null);
-  const { toast } = useToast();
   const [doesBlogExist, setDoesBlogExist] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const { toast } = useToast();
 
   const editor = useCreateBlockNote({
     initialContent: [

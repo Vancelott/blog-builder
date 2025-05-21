@@ -21,8 +21,8 @@ export default function Page() {
   >("loading");
   const [postSlug, setPostSlug] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
-
   const { toast } = useToast();
+
   const editor = useMemo(() => {
     if (initialContent === "loading") {
       return undefined;

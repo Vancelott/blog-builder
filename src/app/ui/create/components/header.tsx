@@ -28,7 +28,6 @@ export function Header(props: PropsWithChildren<IHeader>) {
     const temp = tempDelta || 0;
     const total = base + (temp !== 0 ? temp : 0);
 
-    console.log("total", total);
     return total > 0 ? total : null;
   };
 
