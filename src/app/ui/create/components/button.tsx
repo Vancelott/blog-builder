@@ -7,6 +7,7 @@ interface IButton {
   onClick?: React.MouseEventHandler;
 }
 
+// TODO switch out this Button if its used anywhere
 export function Button(props: PropsWithChildren<IButton>) {
   const { addClassName, input, onClick } = props;
 

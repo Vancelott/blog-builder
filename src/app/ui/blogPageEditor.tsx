@@ -41,6 +41,7 @@ import { getEnabledResizeHandles } from "@/app/utils/blogEditorHelpers/getEnable
 import { updateParentMargin } from "@/app/utils/blogEditorHelpers/updateParentMargin";
 import { calculateDelta } from "@/app/utils/blogEditorHelpers/calculateDelta";
 import { updateCompSize } from "@/app/utils/blogEditorHelpers/updateCompSize";
+import SubdomainDialog from "@/app/ui/create/floatingToolbar";
 
 interface IBlogPageEditor {
   edit: boolean;
@@ -74,10 +75,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
   const [selectedComponent, setSelectedComponent] = useState<{
     id: number | null;
     isMovable: boolean | null;
-  }>({
-    id: null,
-    isMovable: null,
-  });
+  } | null>(null);
   const [shouldCheckForCollision, setShouldCheckForCollision] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -265,18 +263,47 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
     setSelectedComponent({ id: compId, isMovable: comp.isMovable });
   };
 
-  const handleCreatePage = () => {
-    createPage(addedContent, { parentMargin: parentMargin } as IOtherData);
-  };
-  const handleUpdatePage = () => {
-    updatePage(addedContent, { parentMargin: parentMargin } as IOtherData);
+  const handleCreatePage = async (subdomain: string) => {
+    const alreadyTaken = await getPage(subdomain);
+    if (alreadyTaken !== null || alreadyTaken.error) {
+      // toast({
+      //   title: "Something went wrong.",
+      //   description: "This subdomain has already been taken.",
+      //   className: "bg-yellow-100 border-yellow-300 m-2",
+      // });
+      return { error: "This subdomain has already been taken." };
+    }
+
+    const page = await createPage(addedContent, subdomain, {
+      parentMargin: parentMargin,
+    } as IOtherData);
+    if (page.error) {
+      toast({
+        title: "Something went wrong.",
+        description: page.error,
+        className: "bg-yellow-100 border-yellow-300 m-2",
+      });
+    }
   };
 
-  const shouldCreateOrUpdate = () => {
+  const handleUpdatePage = (subdomain: string) => {
+    updatePage(addedContent, subdomain, { parentMargin: parentMargin } as IOtherData);
+  };
+
+  const shouldCreateOrUpdate = (subdomain?: string) => {
     if (props.edit) {
-      handleUpdatePage();
+      // TODO update to subdomain once the route has been updated to s/[subdomain]
+      handleUpdatePage(params.slug);
     } else {
-      handleCreatePage();
+      if (!subdomain) {
+        toast({
+          title: "No subdomain entered.",
+          description: "Please enter a subdomain for your blog.",
+          className: "bg-yellow-100 border-yellow-300 m-2",
+        });
+        return;
+      }
+      return handleCreatePage(subdomain);
     }
   };
 
@@ -822,66 +849,67 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
         )}
         {/* PARENT COMPONENTS */}
         <div ref={parentComponentsRef}>
-          {addedContent
-            .filter((component) => component.dnd === "Droppable")
-            .map((component) => (
-              <Droppable
-                id={component.id}
-                // className="absolute z-20"
-                className={`${component.positionClass} absolute z-20`}
-                key={component.id}
-                style={{
-                  width: component.size.width,
-                  height: component.size.height,
-                }}
-              >
-                <div
-                  ref={(el) => (componentRefs.current[component.id] = el)}
-                  onClick={() => handleSelectComponent(component.id)}
+          {addedContent &&
+            addedContent
+              .filter((component) => component.dnd === "Droppable")
+              .map((component) => (
+                <Droppable
+                  id={component.id}
+                  // className="absolute z-20"
+                  className={`${component.positionClass} absolute z-20`}
+                  key={component.id}
+                  style={{
+                    width: component.size.width,
+                    height: component.size.height,
+                  }}
                 >
-                  <Resizable
-                    minHeight={component.size.minHeight}
-                    minWidth={component.size.minWidth}
-                    style={getResizableStyle(component.position.placement)}
-                    enable={getEnabledResizeHandles(component.position.placement)}
-                    handleWrapperStyle={{
-                      zIndex: 50,
-                    }}
-                    size={{
-                      width: component.size.width,
-                      height: component.size.height,
-                    }}
-                    onResizeStop={(e, direction, ref, d) => {
-                      handleUpdateCompSize(component.id, d);
-                    }}
-                    onResize={(e, direction, ref, d) => {
-                      setTempSizeDelta({
-                        width: d.width,
-                        height: d.height,
-                        id: component.id,
-                      });
-                    }}
+                  <div
+                    ref={(el) => (componentRefs.current[component.id] = el)}
+                    onClick={() => handleSelectComponent(component.id)}
                   >
-                    {/* <div ref={(el) => (componentRefs.current[component.id] = el)}> */}
-                    <DynamicElement
-                      element={component}
-                      handleInputChange={handleInputChange}
-                      handlePositionChange={handlePositionChange}
-                      previewMode={previewMode}
-                      input={component.input}
-                      childElements={addedContent.filter(
-                        (items) => items.parentId === component.id
-                      )}
-                      tempSizeDelta={tempSizeDelta}
-                      // TODO handle this prop for any future refs
-                      ref={component.tag === "nav bar" ? navBarSizeRef : null}
-                      draggableRef={draggableRef}
-                    />
-                    {/* </div> */}
-                  </Resizable>
-                </div>
-              </Droppable>
-            ))}
+                    <Resizable
+                      minHeight={component.size.minHeight}
+                      minWidth={component.size.minWidth}
+                      style={getResizableStyle(component.position.placement)}
+                      enable={getEnabledResizeHandles(component.position.placement)}
+                      handleWrapperStyle={{
+                        zIndex: 50,
+                      }}
+                      size={{
+                        width: component.size.width,
+                        height: component.size.height,
+                      }}
+                      onResizeStop={(e, direction, ref, d) => {
+                        handleUpdateCompSize(component.id, d);
+                      }}
+                      onResize={(e, direction, ref, d) => {
+                        setTempSizeDelta({
+                          width: d.width,
+                          height: d.height,
+                          id: component.id,
+                        });
+                      }}
+                    >
+                      {/* <div ref={(el) => (componentRefs.current[component.id] = el)}> */}
+                      <DynamicElement
+                        element={component}
+                        handleInputChange={handleInputChange}
+                        handlePositionChange={handlePositionChange}
+                        previewMode={previewMode}
+                        input={component.input}
+                        childElements={addedContent.filter(
+                          (items) => items.parentId === component.id
+                        )}
+                        tempSizeDelta={tempSizeDelta}
+                        // TODO handle this prop for any future refs
+                        ref={component.tag === "nav bar" ? navBarSizeRef : null}
+                        draggableRef={draggableRef}
+                      />
+                      {/* </div> */}
+                    </Resizable>
+                  </div>
+                </Droppable>
+              ))}
         </div>
         {/* NON-PARENT COMPONENTS */}
         <div
@@ -1060,7 +1088,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
             handleGridMode={handleGridMode}
             handleSelect={handleSelect}
             shouldCreateOrUpdate={shouldCreateOrUpdate}
-            editorProps={props ? props : null}
+            editorProps={props}
             toggleComponentDraggable={toggleComponentDraggable}
             selectedComponent={selectedComponent}
           />

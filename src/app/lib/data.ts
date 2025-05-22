@@ -38,8 +38,30 @@ export const updateUser = async (prevState, formData: FormData) => {
   }
 };
 
-export const createPage = async (data: IElement[], otherData: IOtherData) => {
+export const createPage = async (
+  data: IElement[],
+  subdomain: string,
+  otherData: IOtherData
+) => {
   const session = await auth();
+
+  if (!session) {
+    return { error: "Please log in, in order to create your own blog page." };
+  }
+
+  if (!subdomain) {
+    return {
+      error: "Please enter a subdomain in order to create your blog successfully.",
+    };
+  }
+
+  const alreadyTaken = await getPage(subdomain);
+  // TODO should this be called beforehand?
+  if (alreadyTaken) {
+    return {
+      error: "This subdomain has already been taken.",
+    };
+  }
 
   // TODO handle this error when slugs are implemented for the blog pages
   if (!session.user.name) {
@@ -48,21 +70,27 @@ export const createPage = async (data: IElement[], otherData: IOtherData) => {
   }
 
   try {
-    // TODO pass the data correctly, atm the column is set as JSONB, but you are passing an array of objects fix either of the two
     await pool.query(
-      `INSERT INTO pages (userId, slug, data, blog_ids, other_data)
+      `INSERT INTO pages (userId, subdomain, data, blog_ids, other_data)
       VALUES ($1, $2, $3, '{}', $4);`,
-      [session.user.id, session.user.name, data, otherData]
+      [session.user.id, subdomain, data, otherData]
     );
-    return { success: true };
   } catch {
     return { error: "The blog page could not be created, please try again." };
   }
+  redirect(`/${subdomain}`, "replace");
 };
 
-// TODO add reroutes for both createPage/updatePage
-export const updatePage = async (data: IElement[], otherData: IOtherData) => {
+export const updatePage = async (
+  data: IElement[],
+  subdomain: string,
+  otherData: IOtherData
+) => {
   const session = await auth();
+
+  if (!subdomain) {
+    return { error: "The blog page could not be updated, please try again." };
+  }
 
   // TODO handle this error when slugs are implemented for the blog pages
   if (!session.user.name) {
@@ -74,21 +102,21 @@ export const updatePage = async (data: IElement[], otherData: IOtherData) => {
     await pool.query(
       `UPDATE pages
        SET data = $1, other_data = $2
-       WHERE slug = $3;`,
-      [data, otherData, session.user.name]
+       WHERE subdomain = $3;`,
+      [data, otherData, subdomain]
     );
-    return { success: true };
   } catch {
     return { error: "The blog page could not be updated, please try again." };
   }
+  redirect(`/${subdomain}`, "replace");
 };
 
-export const getPage = async (slug: string) => {
+export const getPage = async (subdomain: string) => {
   try {
     const page = await pool.query(
       `SELECT * FROM pages
-      WHERE slug = $1;`,
-      [slug]
+      WHERE subdomain = $1;`,
+      [subdomain]
     );
 
     if (page.rows.length === 0) {
@@ -122,13 +150,13 @@ export const getBlogPost = async (slug: string) => {
 };
 
 const createBlogPost = async (
-  blogSlug: string,
+  subdomain: string,
   htmlOutput: string,
   editorData: Block[]
 ) => {
   const session = await auth();
 
-  const { id } = await getPage(blogSlug);
+  const { id } = await getPage(subdomain);
 
   const title = findTitle(htmlOutput);
   let slug = slugify(title, {
@@ -192,15 +220,15 @@ const updateBlogPost = async (
 };
 
 export const createOrUpdateBlogPost = async (
-  blogSlug: string,
+  subdomain: string,
   htmlOutput: string,
   editorData: Block[],
   postSlug: string
 ) => {
   if (!postSlug) {
-    return await createBlogPost(blogSlug, htmlOutput, editorData);
+    return await createBlogPost(subdomain, htmlOutput, editorData);
   } else {
-    return await updateBlogPost(blogSlug, htmlOutput, editorData, postSlug);
+    return await updateBlogPost(subdomain, htmlOutput, editorData, postSlug);
   }
 };
 
@@ -218,12 +246,12 @@ export const getDraftPost = async (postId: number) => {
 };
 
 const createDraft = async (
-  blogSlug: string,
+  subdomain: string,
   postProp: number | string,
   draftJson: Block[]
 ) => {
   const session = await auth();
-  const { id: pageId } = await getPage(blogSlug);
+  const { id: pageId } = await getPage(subdomain);
 
   try {
     const post = await pool.query(
@@ -239,11 +267,11 @@ const createDraft = async (
 };
 
 const updateDraft = async (
-  blogSlug: string,
+  subdomain: string,
   postProp: number | string,
   draftJson: Block[]
 ) => {
-  const { id: pageId } = await getPage(blogSlug);
+  const { id: pageId } = await getPage(subdomain);
   const parsedPostProp = isNaN(parseInt(postProp)) ? -1 : parseInt(postProp);
 
   try {
@@ -261,7 +289,7 @@ const updateDraft = async (
 };
 
 export const createOrUpdateDraft = async (
-  blogSlug: string,
+  subdomain: string,
   postProp: number | string,
   draftJson: Block[]
 ) => {
@@ -271,8 +299,8 @@ export const createOrUpdateDraft = async (
     parsedPostProp > 0 ? await getDraftPost(parsedPostProp) : await getBlogPost(postProp);
 
   if (shouldUpdate) {
-    return await updateDraft(blogSlug, postProp, draftJson);
+    return await updateDraft(subdomain, postProp, draftJson);
   } else {
-    return await createDraft(blogSlug, postProp, draftJson);
+    return await createDraft(subdomain, postProp, draftJson);
   }
 };

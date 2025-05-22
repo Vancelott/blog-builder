@@ -21,9 +21,12 @@ import {
 } from "@radix-ui/react-icons";
 import { PositionButtons } from "@/app/ui/create/components/positionButtons";
 import { useState } from "react";
+import SubdomainDialog from "@/app/ui/create/subdomainDialog";
 
 // TODO add an interface
 export default function FloatingToolbar(props) {
+  const [isToggled, setIsToggled] = useState<{ [btnName: string]: boolean }>({});
+
   const {
     handlePositionChange,
     handlePreviewMode,
@@ -34,15 +37,14 @@ export default function FloatingToolbar(props) {
     selectedComponent,
     toggleComponentDraggable,
   } = props;
-  const [isToggled, setIsToggled] = useState<{ [btnName: string]: boolean }>({});
-  const { edit } = editorProps;
+  const { edit } = editorProps ?? {};
 
   return (
     <TooltipProvider>
       <div className="flex flex-col sm:flex-row gap-4 z-50">
         <div className="flex gap-2 px-6 py-3 bg-gray-100 rounded-2xl shadow-lg ">
           <div className="flex gap-1 place-items-center">
-            {selectedComponent.isMovable === true ? (
+            {selectedComponent?.isMovable === true && (
               <Popover>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -64,7 +66,7 @@ export default function FloatingToolbar(props) {
                   <PositionButtons handlePositionChange={handlePositionChange} />
                 </PopoverContent>
               </Popover>
-            ) : null}
+            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button size="icon" variant="ghost">
@@ -86,7 +88,7 @@ export default function FloatingToolbar(props) {
               </TooltipTrigger>
               <TooltipContent>Change color</TooltipContent>
             </Tooltip>
-            {selectedComponent.id !== null ? (
+            {selectedComponent?.id !== null && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -105,7 +107,7 @@ export default function FloatingToolbar(props) {
                 </TooltipTrigger>
                 <TooltipContent>Toggle movement</TooltipContent>
               </Tooltip>
-            ) : null}
+            )}
           </div>
         </div>
         <div className="flex gap-2 px-4 py-2 bg-gray-100 rounded-2xl shadow-lg">
@@ -191,19 +193,21 @@ export default function FloatingToolbar(props) {
               </TooltipTrigger>
               <TooltipContent>Add</TooltipContent>
             </Tooltip>
-
-            <Button
-              onClick={() => shouldCreateOrUpdate()}
-              className="hover:bg-cyan-700 h-10"
-            >
-              {edit ? "Edit" : "Create"}
-            </Button>
-            {/* <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="default">Create</Button>
-            </TooltipTrigger>
-            <TooltipContent>Create Your Blog</TooltipContent>
-          </Tooltip> */}
+            {edit && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="default"
+                    onClick={() => shouldCreateOrUpdate()}
+                    className="hover:bg-cyan-700 h-10"
+                  >
+                    Update
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Update Your Blog</TooltipContent>
+              </Tooltip>
+            )}
+            {!edit && <SubdomainDialog shouldCreateOrUpdate={shouldCreateOrUpdate} />}
           </div>
         </div>
       </div>
