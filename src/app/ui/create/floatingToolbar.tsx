@@ -39,6 +39,7 @@ export default function FloatingToolbar(props) {
   } = props;
   const { edit } = editorProps ?? {};
 
+  // TODO disable while loading
   return (
     <TooltipProvider>
       <div className="flex flex-col sm:flex-row gap-4 z-50">

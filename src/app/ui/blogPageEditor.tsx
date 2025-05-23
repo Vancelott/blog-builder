@@ -41,7 +41,8 @@ import { getEnabledResizeHandles } from "@/app/utils/blogEditorHelpers/getEnable
 import { updateParentMargin } from "@/app/utils/blogEditorHelpers/updateParentMargin";
 import { calculateDelta } from "@/app/utils/blogEditorHelpers/calculateDelta";
 import { updateCompSize } from "@/app/utils/blogEditorHelpers/updateCompSize";
-import SubdomainDialog from "@/app/ui/create/floatingToolbar";
+import { isAuthenticated } from "@/app/utils/blogEditorHelpers/isAuthenticated";
+import AuthError from "@/app/ui/create/authError";
 
 interface IBlogPageEditor {
   edit: boolean;
@@ -78,6 +79,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
   } | null>(null);
   const [shouldCheckForCollision, setShouldCheckForCollision] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [authenticated, setAuthenticated] = useState<boolean>(false);
 
   const navBarSizeRef = useRef<HTMLDivElement>(null);
   const parentComponentsRef = useRef(null);
@@ -112,6 +114,13 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
 
     const fetchPageData = async () => {
       if (params && props.edit) {
+        const authenticated = await isAuthenticated(params.slug);
+        if (!authenticated) {
+          setIsLoading(false);
+          return;
+        }
+        setAuthenticated(true);
+
         setIsLoading(true);
         try {
           const data = await getPage(params.slug);
@@ -292,7 +301,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
 
   const shouldCreateOrUpdate = (subdomain?: string) => {
     if (props.edit) {
-      // TODO update to subdomain once the route has been updated to s/[subdomain]
+      // TODO update to subdomain once the route has been updated to s/[subdomain] (apply throughout the whole file)
       handleUpdatePage(params.slug);
     } else {
       if (!subdomain) {
@@ -830,7 +839,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
   return (
     // TODO remove flex-col?
     // <div className="flex h-screen w-full relative overflow-hidden">-
-    <div className="flex flex-col h-screen w-full relative overflow-hidden bg-black">
+    <div className={`flex flex-col h-screen w-full relative overflow-hidden bg-black`}>
       <DndContext
         onDragEnd={handleDragEnd}
         onDragStart={handleDragStart}
@@ -939,6 +948,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                 .map((component) => component.id)}
               strategy={rectSwappingStrategy}
             >
+              {!isLoading && props.edit && !authenticated ? <AuthError /> : null}
               {addedContent.length === 0 && isLoading && props.edit && (
                 <div className="flex flex-col w-full h-full justify-center place-items-center gap-2">
                   {/* TODO replace with a progress bar? */}
@@ -1081,17 +1091,19 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
               ))}
             </select>
           )}
-
-          <FloatingToolbar
-            handlePositionChange={handlePositionChange}
-            handlePreviewMode={handlePreviewMode}
-            handleGridMode={handleGridMode}
-            handleSelect={handleSelect}
-            shouldCreateOrUpdate={shouldCreateOrUpdate}
-            editorProps={props}
-            toggleComponentDraggable={toggleComponentDraggable}
-            selectedComponent={selectedComponent}
-          />
+          {!isLoading && (props.edit ? authenticated : null) && (
+            <FloatingToolbar
+              handlePositionChange={handlePositionChange}
+              handlePreviewMode={handlePreviewMode}
+              handleGridMode={handleGridMode}
+              handleSelect={handleSelect}
+              shouldCreateOrUpdate={shouldCreateOrUpdate}
+              editorProps={props}
+              toggleComponentDraggable={toggleComponentDraggable}
+              selectedComponent={selectedComponent}
+              isLoading={isLoading}
+            />
+          )}
         </div>
       </DndContext>
     </div>

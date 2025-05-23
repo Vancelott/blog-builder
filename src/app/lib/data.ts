@@ -9,6 +9,24 @@ import slugify from "slugify";
 import { redirect } from "next/navigation";
 import { Block } from "@blocknote/core";
 
+export const getUser = async (email?, name) => {
+  if (!email && !name) {
+    return { error: "No parameters were specified when fetching the user's data." };
+  }
+
+  try {
+    const userId = await pool.query(
+      `SELECT id FROM pages
+      WHERE email = $1 OR name = $2;`,
+      [email, name]
+    );
+
+    return userId;
+  } catch {
+    return { error: "The user could not be located, please try again." };
+  }
+};
+
 export const updateUser = async (prevState, formData: FormData) => {
   const session = await auth();
   const schema = z
@@ -63,12 +81,6 @@ export const createPage = async (
     };
   }
 
-  // TODO handle this error when slugs are implemented for the blog pages
-  if (!session.user.name) {
-    console.log("no username");
-    return;
-  }
-
   try {
     await pool.query(
       `INSERT INTO pages (userId, subdomain, data, blog_ids, other_data)
@@ -90,12 +102,6 @@ export const updatePage = async (
 
   if (!subdomain) {
     return { error: "The blog page could not be updated, please try again." };
-  }
-
-  // TODO handle this error when slugs are implemented for the blog pages
-  if (!session.user.name) {
-    console.log("no username");
-    return;
   }
 
   try {
@@ -123,10 +129,11 @@ export const getPage = async (subdomain: string) => {
       return null;
     }
 
-    return await {
+    return {
       data: page.rows[0].data,
       otherData: page.rows[0].other_data,
       id: page.rows[0].id,
+      userId: page.rows[0].userid,
     };
   } catch {
     return { error: "The page could not be loaded, please try again." };

@@ -11,12 +11,15 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { notFound } from "next/navigation";
 import BlogPostSkeleton from "@/app/ui/slug/blogPostSkeleton";
+import { isAuthenticated } from "@/app/utils/blogEditorHelpers/isAuthenticated";
+import AuthError from "@/app/ui/create/authError";
 
 export default function Page() {
   const params = useParams<string>();
   const [draftId, setDraftId] = useState<number>(null);
   const [doesBlogExist, setDoesBlogExist] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [authenticated, setAuthenticated] = useState<boolean>(false);
   const { toast } = useToast();
 
   const editor = useCreateBlockNote({
@@ -76,6 +79,14 @@ export default function Page() {
           if (!isDataFetched && !blog) {
             setDoesBlogExist(false);
           } else {
+            const authenticated = await isAuthenticated(params.slug);
+            if (!authenticated) {
+              setDoesBlogExist(true);
+              setIsLoading(false);
+              return;
+            }
+
+            setAuthenticated(true);
             setDoesBlogExist(true);
           }
         } catch (error) {
@@ -133,22 +144,30 @@ export default function Page() {
     }
   };
 
-  if (!doesBlogExist && !isLoading) {
-    notFound();
-  } else if (isLoading) {
+  if (isLoading) {
     return <BlogPostSkeleton edit={true} userData={true} />;
+  }
+
+  if (!doesBlogExist) {
+    notFound();
   }
 
   return (
     <div className="flex flex-col w-full justify-center items-center bg-editor-gray overflow-y-scroll overflow-x-hidden h-screen">
-      <div className="flex flex-row w-screen gap-2 bg-gray-700 border-b-2 border-gray-800 px-8 sm:px-16 py-6 mb-10 rounded-lg align-top sticky top-0 place-content-end z-20">
-        <Button className=" bg-orange-500" size="lg" onClick={() => handleCreate()}>
-          Create
-        </Button>
-      </div>
-      <div className="w-4/5 lg:w-2/5 rounded-lg">
-        <BlockNoteView editor={editor} onChange={() => handleSaveDraft()} />
-      </div>
+      {!authenticated ? (
+        <AuthError blogPost={true} />
+      ) : (
+        <>
+          <div className="flex flex-row w-screen gap-2 bg-gray-700 border-b-2 border-gray-800 px-8 sm:px-16 py-6 mb-10 rounded-lg align-top sticky top-0 place-content-end z-20">
+            <Button className=" bg-orange-500" size="lg" onClick={() => handleCreate()}>
+              Create
+            </Button>
+          </div>
+          <div className="w-4/5 lg:w-2/5 rounded-lg">
+            <BlockNoteView editor={editor} onChange={() => handleSaveDraft()} />
+          </div>
+        </>
+      )}
     </div>
   );
 }
