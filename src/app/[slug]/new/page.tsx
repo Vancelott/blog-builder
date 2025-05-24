@@ -4,7 +4,6 @@ import { BlockNoteView } from "@blocknote/shadcn";
 import "@blocknote/shadcn/style.css";
 import { useCreateBlockNote } from "@blocknote/react";
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
 import { useParams } from "next/navigation";
 import { createOrUpdateBlogPost, createOrUpdateDraft, getPage } from "@/app/lib/data";
 import { useState, useEffect } from "react";

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { LockClosedIcon } from "@radix-ui/react-icons";
 
-export default function AuthError(blogPost: boolean) {
+export default function AuthError(props?: boolean) {
   return (
     <div className="flex flex-col w-full h-full justify-center place-items-center gap-6">
       <div className="flex gap-14 place-items-center">
@@ -15,7 +15,7 @@ export default function AuthError(blogPost: boolean) {
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl text-gray-100">You need to log in to continue</h1>
           <h2 className="text-lg text-gray-200">
-            {blogPost
+            {props.blogPost
               ? "To edit your blog post, please log in first."
               : "To edit your blog, please log in first."}
           </h2>

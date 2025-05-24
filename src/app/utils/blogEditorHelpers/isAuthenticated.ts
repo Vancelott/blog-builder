@@ -7,7 +7,11 @@ export const isAuthenticated = async (subdomain: string) => {
   const session = await auth();
   const page = await getPage(subdomain);
 
-  if (page.userId !== session.userId) {
+  if (!session) {
+    return false;
+  }
+
+  if (page.userId !== (session.userId ?? session.user.id)) {
     return false;
   }
 

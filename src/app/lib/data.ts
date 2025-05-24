@@ -9,7 +9,7 @@ import slugify from "slugify";
 import { redirect } from "next/navigation";
 import { Block } from "@blocknote/core";
 
-export const getUser = async (email?, name) => {
+export const getUserId = async (email?: string, name?: string) => {
   if (!email && !name) {
     return { error: "No parameters were specified when fetching the user's data." };
   }

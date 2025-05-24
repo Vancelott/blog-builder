@@ -45,7 +45,7 @@ import { isAuthenticated } from "@/app/utils/blogEditorHelpers/isAuthenticated";
 import AuthError from "@/app/ui/create/authError";
 
 interface IBlogPageEditor {
-  edit: boolean;
+  edit?: boolean;
 }
 
 export default function BlogPageEditor(props: IBlogPageEditor) {
@@ -134,6 +134,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
         }
         setIsLoading(false);
       }
+      setIsLoading(false);
     };
 
     fetchPageData();
@@ -349,9 +350,8 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
   // };
 
   const handleDragStart = (event: DragEndEvent) => {
-    if (tempSizeDelta.id === event.active.id) {
-      return;
-    }
+    handleSelectComponent(event.active.id);
+
     setDraggingComponentId(event.active.id);
   };
 
@@ -363,9 +363,10 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
   const handleDragEnd = (event: DragEndEvent) => {
     const { activatorEvent, active, collisions, delta, over } = event;
 
-    // if (tempSizeDelta.id === event.active.id) {
-    //   return;
-    // }
+    // prevents dragging when resizing
+    if (tempSizeDelta.id === event.active.id) {
+      return;
+    }
 
     if (active === null || over === null) {
       toast({
@@ -447,7 +448,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
   const toggleComponentDraggable = () => {
     setAddedContent((prevAddedContent) => {
       return prevAddedContent.map((component) => {
-        if (component.id === selectedComponent.id && component.disabled !== null) {
+        if (component.id === selectedComponent?.id && component.disabled !== null) {
           return {
             ...component,
             disabled: !component.disabled,
@@ -836,10 +837,26 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
     tempSizeDelta,
   ]);
 
+  const calculateTranslate = (component, deltaX, deltaY) => {
+    const isColliding = isCompColliding(component, deltaX, deltaY, null);
+    if (isColliding.length > 0) {
+      console.log("colliding", component.id, component.position.x, component.position.y);
+      return {
+        transform: `translate3d(${component.position.x}px, ${component.position.y}px, 0)`,
+      };
+    }
+
+    const X = component.position.x + deltaX < 0 ? 0 : component.position.x + deltaX;
+    const Y = component.position.y + deltaY < 0 ? 0 : component.position.y + deltaY;
+
+    console.log("not colliding", component.id, X, Y);
+    return { transform: `translate3d(${X}px, ${Y}px, 0)` };
+  };
+
   return (
     // TODO remove flex-col?
     // <div className="flex h-screen w-full relative overflow-hidden">-
-    <div className={`flex flex-col h-screen w-full relative overflow-hidden bg-black`}>
+    <div className="flex flex-col h-screen w-full relative overflow-hidden bg-black">
       <DndContext
         onDragEnd={handleDragEnd}
         onDragStart={handleDragStart}
@@ -857,7 +874,12 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
           ></div>
         )}
         {/* PARENT COMPONENTS */}
-        <div ref={parentComponentsRef}>
+        <div
+          ref={parentComponentsRef}
+          onClick={() => {
+            handleSelectComponent(null);
+          }}
+        >
           {addedContent &&
             addedContent
               .filter((component) => component.dnd === "Droppable")
@@ -874,7 +896,10 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                 >
                   <div
                     ref={(el) => (componentRefs.current[component.id] = el)}
-                    onClick={() => handleSelectComponent(component.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelectComponent(component.id);
+                    }}
                   >
                     <Resizable
                       minHeight={component.size.minHeight}
@@ -935,6 +960,9 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
               (parentMargin.marginTop || 0) + (parentMargin.marginBottom || 0)
             }px)`,
           }}
+          onClick={() => {
+            handleSelectComponent(null);
+          }}
         >
           <Droppable
             id={"mainGrid"}
@@ -966,7 +994,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                   <div
                     key={component.id}
                     className="z-5 absolute border-2 border-purple-400 border-dashed"
-                    // TODO should check for collision before moving
+                    // TODO should check for collision before moving (experiment with calculateTranslate)
                     style={{
                       transform: `translate3d(${
                         component.position.x + screenSize.deltaX < 0
@@ -979,7 +1007,10 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                       }px, 0)`,
                     }}
                     ref={draggableRef}
-                    onClick={() => handleSelectComponent(component.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelectComponent(component.id);
+                    }}
                   >
                     <>
                       {/* TODO Move the sortable up, so that the collision works better? */}
@@ -987,7 +1018,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                         id={component.id}
                         position={component.position}
                         screenSize={screenSize}
-                        className="flex z-40 absolute "
+                        // className="flex z-40 absolute "
                         disabled={component.disabled}
                         style={{
                           width: component.size.width,
@@ -995,12 +1026,6 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                         }}
                       >
                         <Resizable
-                          // style={{
-                          //   display: "flex",
-                          //   alignItems: "center",
-                          //   justifyContent: "center",
-                          //   flexDirection: "column",
-                          // }}
                           size={{
                             width: component.size.width,
                             height: component.size.height,
@@ -1040,38 +1065,45 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                   </div>
                 ))}
             </SortableContext>
-            <DragOverlay
-              className="outline outline-green-300"
-              dropAnimation={{
-                duration: 300,
-                // easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)",
-              }}
-            >
-              {addedContent
-                .filter((item) => item?.id === draggingComponentId && !item.disabled)
-                .map((item) => (
-                  <div
-                    key={item.id}
-                    // className="w-full h-screen"
-                    className={`${item.positionClass} `}
-                    // style={{
-                    //   width: item.size.width,
-                    //   height: item.size.height,
-                    // }}
-                  >
-                    <DynamicElement
+            {tempSizeDelta.id === null && (
+              <DragOverlay
+                className="outline outline-green-300"
+                dropAnimation={{
+                  duration: 300,
+                  // easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)",
+                }}
+              >
+                {addedContent
+                  .filter(
+                    (item) =>
+                      item.id !== tempSizeDelta.id &&
+                      item?.id === draggingComponentId &&
+                      !item.disabled
+                  )
+                  .map((item) => (
+                    <div
                       key={item.id}
-                      tag={item.tag}
-                      id={item.id}
-                      element={item}
-                      gridId={item.gridId}
-                      handleInputChange={handleInputChange}
-                      previewMode={previewMode}
-                      input={item.input}
-                    />
-                  </div>
-                ))}
-            </DragOverlay>
+                      // className="w-full h-screen"
+                      className={`${item.positionClass} `}
+                      // style={{
+                      //   width: item.size.width,
+                      //   height: item.size.height,
+                      // }}
+                    >
+                      <DynamicElement
+                        key={item.id}
+                        tag={item.tag}
+                        id={item.id}
+                        element={item}
+                        gridId={item.gridId}
+                        handleInputChange={handleInputChange}
+                        previewMode={previewMode}
+                        input={item.input}
+                      />
+                    </div>
+                  ))}
+              </DragOverlay>
+            )}
           </Droppable>
         </div>
         <div className="flex flex-col gap-4 w-full h-screen place-items-center justify-end pt-36 pb-4">
@@ -1092,6 +1124,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
             </select>
           )}
           {!isLoading && (props.edit ? authenticated : null) && (
+            // {!isLoading && (
             <FloatingToolbar
               handlePositionChange={handlePositionChange}
               handlePreviewMode={handlePreviewMode}
@@ -1101,7 +1134,6 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
               editorProps={props}
               toggleComponentDraggable={toggleComponentDraggable}
               selectedComponent={selectedComponent}
-              isLoading={isLoading}
             />
           )}
         </div>

@@ -26,7 +26,13 @@ export function Sortable(props: PropsWithChildren<ISortable>) {
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div
+      ref={setNodeRef}
+      // stops the dragging animation when just resizing a component
+      style={!props.disabled ? style : null}
+      {...attributes}
+      {...listeners}
+    >
       {props.children}
     </div>
   );
