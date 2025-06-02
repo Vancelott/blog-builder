@@ -50,8 +50,8 @@ interface IBlogPageEditor {
 
 export default function BlogPageEditor(props: IBlogPageEditor) {
   const [addedContent, setAddedContent] = useState<IElement[]>([]);
+  const [lastId, setLastId] = useState(0);
   const [showSelect, setShowSelect] = useState<boolean>(false);
-  const [showDelete, setShowDelete] = useState<boolean>(false);
   const [previewMode, setPreviewMode] = useState<boolean>(false);
   const [draggingComponentId, setDraggingComponentId] = useState<number>(null);
   const [showGrid, setShowGrid] = useState<boolean>(false);
@@ -318,36 +318,49 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
   };
 
   const handleSubmit = async (elementId: number) => {
-    let elementToBeAdded: Element;
+    let elementToBeAdded: IElement;
     elements.map((item) => {
       if (item.componentId == elementId) {
         elementToBeAdded = {
           ...item,
         };
-        elementToBeAdded.id = addedContent.length;
+        elementToBeAdded.id = lastId;
         elementToBeAdded.gridId = "mainGrid";
       }
     });
+    setLastId(lastId + 1);
+
+    const availableSpace = findAvailableSpace(elementToBeAdded);
+    if (!availableSpace) {
+      toast({
+        title: "Something went wrong.",
+        description: "There is no available space for the component.",
+        className: "bg-yellow-100 border-yellow-300 m-2",
+      });
+      setShowSelect(false);
+      return;
+    }
+
+    elementToBeAdded.position = {
+      ...elementToBeAdded.position,
+      x: elementToBeAdded.position.x + availableSpace.deltaX,
+      y: elementToBeAdded.position.y + availableSpace.deltaY,
+    };
+
     setAddedContent((prevContent) => [...prevContent, elementToBeAdded]);
 
     if (elementToBeAdded.tag === "nav bar") {
       await handlePositionChange("Left"); // default value
     }
 
-    await updateParentMargin(setParentMargin, componentRefs);
+    updateParentMargin(setParentMargin, componentRefs);
     setShowSelect(false);
   };
 
-  const handleDelete = (elementToDelete: IElement) => {
-    const updatedContent = addedContent.filter(
-      (element) => element.id != elementToDelete.id
-    );
+  const handleDelete = (compId: number) => {
+    const updatedContent = addedContent.filter((comp) => comp.id != compId);
     setAddedContent([...updatedContent]);
   };
-
-  // const handleShowDelete = (state: boolean) => {
-  //   setShowDelete(state);
-  // };
 
   const handleDragStart = (event: DragEndEvent) => {
     handleSelectComponent(event.active.id);
@@ -365,6 +378,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
 
     // prevents dragging when resizing
     if (tempSizeDelta.id === event.active.id) {
+      setDraggingComponentId(null);
       return;
     }
 
@@ -414,7 +428,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
     ) {
       swapPositions(addedContent, setAddedContent, draggedComponent, newStatus);
     } else {
-      updatePosition(setAddedContent, elementId, newStatus, delta);
+      updatePosition(setAddedContent, elementId, newStatus, delta, screenSize);
       setShouldCheckForCollision(true);
     }
   };
@@ -490,6 +504,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
     return nearbyComponents;
   }, [addedContent, findResizingComponent]);
 
+  // TODO merge this function with isCompColliding?
   const isResizingCompColliding = useCallback(
     (currentResizingComp) => {
       const { height: heightDelta, width: widthDelta } = tempSizeDelta;
@@ -513,13 +528,102 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
     [roughlyNearbyComponents, tempSizeDelta]
   );
 
+  const findAvailableSpace = useCallback(
+    (comp) => {
+      // const comp = addedContent.at(addedContent.length - 1);
+
+      const isParentComponent = comp.dnd === "Droppable";
+      const isCollidingInitially = isCompColliding(comp, 0, 0, null);
+
+      if (isCollidingInitially.length === 0) {
+        return { deltaX: 0, deltaY: 0 };
+      }
+
+      let deltaX = 0;
+      let deltaY = 0;
+
+      for (let i = 0; i < isCollidingInitially.length; i++) {
+        const loopStepX = comp.size.width;
+        const loopStepY = comp.size.height;
+        const maxAddedX = screenSize.width;
+        const maxAddedY = screenSize.height;
+
+        let pixelsAddedX = 0;
+        let pixelsAddedY = 0;
+        let attempts = 0;
+        const maxAttempts = (maxAddedX / loopStepX) * (maxAddedY / loopStepY);
+
+        while (
+          pixelsAddedX <= maxAddedX &&
+          pixelsAddedY <= maxAddedY &&
+          isCompColliding(comp, deltaX, deltaY, null).length > 0 &&
+          attempts < maxAttempts
+        ) {
+          attempts++;
+
+          const updatedDeltaX = deltaX + loopStepX;
+
+          const isPosValidX = validatePosition(
+            { x: updatedDeltaX, y: deltaY },
+            comp,
+            screenSize,
+            parentMargin,
+            isParentComponent
+          );
+
+          if (isPosValidX) {
+            deltaX = updatedDeltaX;
+            pixelsAddedX += loopStepX;
+            continue;
+          }
+
+          // If no valid X movement, try moving down by Y
+          const updatedDeltaY = deltaY + loopStepY;
+
+          const isPosValidY = validatePosition(
+            { x: 0, y: updatedDeltaY },
+            comp,
+            screenSize,
+            parentMargin,
+            isParentComponent
+          );
+
+          if (isPosValidY) {
+            deltaX = 0;
+            pixelsAddedX = 0;
+            deltaY = updatedDeltaY;
+            pixelsAddedY += loopStepY;
+            continue;
+          }
+
+          if (!isPosValidX && !isPosValidY) {
+            console.log("No available space");
+          }
+
+          // break to prevent infinite loop
+          break;
+        }
+
+        if (isCompColliding(comp, deltaX, deltaY, null).length === 0) {
+          return { deltaX: deltaX, deltaY: deltaY };
+        } else {
+          return false;
+        }
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [parentMargin, screenSize]
+  );
+
   const isCompColliding = useCallback(
     (comp, deltaX, deltaY, currentResizingComp) => {
       const collidingComponents = addedContent.filter(
         (item) =>
-          comp.position.x < item.position.x + item.size.width &&
+          // TODO add deltaX? and switch to <= / >=
+          comp.position.x + deltaX < item.position.x + item.size.width &&
           comp.position.x + comp.size.width + deltaX > item.position.x &&
-          comp.position.y < item.position.y + item.size.height &&
+          // TODO add deltaY?
+          comp.position.y + deltaY < item.position.y + item.size.height &&
           comp.position.y + comp.size.height + deltaY > item.position.y &&
           item.id !== comp.id &&
           item.id !== currentResizingComp
@@ -672,7 +776,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
       isCollidingAfterUpdate();
       setShouldCheckForCollision(false);
     }
-  }, [addedContent, isCollidingAfterUpdate, shouldCheckForCollision]);
+  }, [addedContent, findAvailableSpace, isCollidingAfterUpdate, shouldCheckForCollision]);
 
   useEffect(() => {
     const { height: heightDelta, width: widthDelta, id: idDelta } = tempSizeDelta;
@@ -837,21 +941,21 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
     tempSizeDelta,
   ]);
 
-  const calculateTranslate = (component, deltaX, deltaY) => {
-    const isColliding = isCompColliding(component, deltaX, deltaY, null);
-    if (isColliding.length > 0) {
-      console.log("colliding", component.id, component.position.x, component.position.y);
-      return {
-        transform: `translate3d(${component.position.x}px, ${component.position.y}px, 0)`,
-      };
-    }
+  // const calculateTranslate = (component, deltaX, deltaY) => {
+  //   const isColliding = isCompColliding(component, deltaX, deltaY, null);
+  //   if (isColliding.length > 0) {
+  //     console.log("colliding", component.id, component.position.x, component.position.y);
+  //     return {
+  //       transform: `translate3d(${component.position.x}px, ${component.position.y}px, 0)`,
+  //     };
+  //   }
 
-    const X = component.position.x + deltaX < 0 ? 0 : component.position.x + deltaX;
-    const Y = component.position.y + deltaY < 0 ? 0 : component.position.y + deltaY;
+  //   const X = component.position.x + deltaX < 0 ? 0 : component.position.x + deltaX;
+  //   const Y = component.position.y + deltaY < 0 ? 0 : component.position.y + deltaY;
 
-    console.log("not colliding", component.id, X, Y);
-    return { transform: `translate3d(${X}px, ${Y}px, 0)` };
-  };
+  //   console.log("not colliding", component.id, X, Y);
+  //   return { transform: `translate3d(${X}px, ${Y}px, 0)` };
+  // };
 
   return (
     // TODO remove flex-col?
@@ -1123,13 +1227,14 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
               ))}
             </select>
           )}
-          {!isLoading && (props.edit ? authenticated : null) && (
-            // {!isLoading && (
+          {/* {!isLoading && (props.edit ? authenticated : null) && ( */}
+          {!isLoading && (
             <FloatingToolbar
               handlePositionChange={handlePositionChange}
               handlePreviewMode={handlePreviewMode}
               handleGridMode={handleGridMode}
               handleSelect={handleSelect}
+              handleDelete={handleDelete}
               shouldCreateOrUpdate={shouldCreateOrUpdate}
               editorProps={props}
               toggleComponentDraggable={toggleComponentDraggable}

@@ -29,7 +29,13 @@ export interface IElement {
   otherElements?: IElement[];
   isDropped: boolean;
   gridId: string;
-  position: { x: number; y: number; placement?: string };
+  position: {
+    x: number;
+    y: number;
+    xPercent: number;
+    yPercent: number;
+    placement?: string;
+  };
   size?: Resize;
   isMovable?: boolean;
 }
@@ -106,6 +112,7 @@ export interface IUpdatePosition {
   elementId: string;
   newStatus: string | number;
   delta: DragEndEvent;
+  screenSize: { [name: string]: number };
 }
 
 export interface IValidatePosition {

@@ -10,12 +10,13 @@ import { Separator } from "@/components/ui/separator";
 import {
   GridIcon,
   LayoutIcon,
-  ColorWheelIcon,
   EyeOpenIcon,
   EyeClosedIcon,
   PlusIcon,
   MoveIcon,
   CircleIcon,
+  TrashIcon,
+  ColorWheelIcon,
   TransformIcon,
   Cross1Icon,
 } from "@radix-ui/react-icons";
@@ -26,12 +27,14 @@ import SubdomainDialog from "@/app/ui/create/subdomainDialog";
 // TODO add an interface
 export default function FloatingToolbar(props) {
   const [isToggled, setIsToggled] = useState<{ [btnName: string]: boolean }>({});
+  const [open, setOpen] = useState<{ [btnName: string]: boolean }>({});
 
   const {
     handlePositionChange,
     handlePreviewMode,
     handleGridMode,
     handleSelect,
+    handleDelete,
     shouldCreateOrUpdate,
     editorProps,
     selectedComponent,
@@ -89,25 +92,55 @@ export default function FloatingToolbar(props) {
               </TooltipTrigger>
               <TooltipContent>Change color</TooltipContent>
             </Tooltip>
-            {selectedComponent?.id !== null && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => toggleComponentDraggable()}
-                  >
-                    <MoveIcon
-                      style={{
-                        display: "inline-block",
-                        transform: `scale(2)`,
-                        position: "absolute",
-                      }}
-                    />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Toggle movement</TooltipContent>
-              </Tooltip>
+            {selectedComponent && selectedComponent?.id !== null && (
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      name="move"
+                      onClick={() => toggleComponentDraggable()}
+                    >
+                      <MoveIcon
+                        style={{
+                          display: "inline-block",
+                          transform: `scale(2)`,
+                          position: "absolute",
+                        }}
+                      />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Toggle movement</TooltipContent>
+                </Tooltip>
+                <Tooltip
+                  open={open["delete"] ?? false}
+                  onOpenChange={(isOpen) =>
+                    setOpen((prev) => ({ ...prev, delete: isOpen }))
+                  }
+                >
+                  <TooltipTrigger asChild>
+                    <Button
+                      name="delete"
+                      onMouseEnter={() => setOpen((prev) => ({ ...prev, [name]: true }))}
+                      onMouseLeave={() => setOpen((prev) => ({ ...prev, [name]: false }))}
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => handleDelete(selectedComponent.id)}
+                    >
+                      <TrashIcon
+                        style={{
+                          display: "inline-block",
+                          transform: `scale(2)`,
+                          position: "absolute",
+                        }}
+                        className={`${open["delete"] ? "text-red-800" : "text-black"}`}
+                      />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Delete selected component</TooltipContent>
+                </Tooltip>
+              </>
             )}
           </div>
         </div>

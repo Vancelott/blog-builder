@@ -34,7 +34,7 @@ export const elements: IElement[] = [
     gridId: null,
     position: { x: 0, y: 0 },
     size: {
-      height: 200,
+      height: 220,
       width: 200,
       deltaHeight: 0,
       deltaWidth: 0,

@@ -4,8 +4,20 @@ export const updatePosition: IUpdatePosition = (
   setAddedContent,
   elementId,
   newStatus,
-  delta
+  delta,
+  screenSize
 ) => {
+  // TODO once this is done, maybe make it so that the width/height get scaled accordingly as well? Read through - https://medium.com/@miheer.sharma1/responsive-scene-elements-in-react-js-video-editor-9bc7d7730ed0 again
+  const calculatePercentage = (compPos, delta, screen) => {
+    if (compPos !== 0) {
+      const deltaPercent = (delta / screen) * 100;
+
+      return Math.max(0, Math.min(100, compPos + deltaPercent));
+    }
+
+    return ((compPos + delta) / screen) * 100;
+  };
+
   setAddedContent((prevAddedContent) => {
     return prevAddedContent.map((component) => {
       if (component.id === elementId) {
@@ -14,11 +26,25 @@ export const updatePosition: IUpdatePosition = (
             ...component,
             gridId: newStatus,
             parentId: null,
-            // TODO deleted isDropped?
+            // TODO delete isDropped?
             isDropped: true,
             position: {
               x: component.position.x + delta.x,
               y: component.position.y + delta.y,
+              xPercent: calculatePercentage(
+                !component.position.xPercent
+                  ? component.position.x
+                  : component.position.xPercent,
+                delta.x,
+                screenSize.width
+              ),
+              yPercent: calculatePercentage(
+                !component.position.yPercent
+                  ? component.position.y
+                  : component.position.yPercent,
+                delta.y,
+                screenSize.height
+              ),
             },
           };
         } else {
@@ -31,11 +57,22 @@ export const updatePosition: IUpdatePosition = (
             ...component,
             // TODO uncomment or delete once components don't get dragged upon resizing
             // gridId: null,
-            parentId: droppedComponent.dnd === "Droppable" ? newStatus : null,
+            parentId: droppedComponent?.dnd === "Droppable" ? newStatus : null,
             isDropped: true,
             position: {
               x: component.position.x + delta.x,
               y: component.position.y + delta.y,
+              // TODO is the percentage based position needed here?
+              // xPercent: calculatePercentage(
+              //   component.position.xPercent ?? component.position.x,
+              //   delta.x,
+              //   screenSize.width
+              // ),
+              // yPercent: calculatePercentage(
+              //   component.position.yPercent ?? component.position.y,
+              //   delta.y,
+              //   screenSize.height
+              // ),
             },
           };
         }
