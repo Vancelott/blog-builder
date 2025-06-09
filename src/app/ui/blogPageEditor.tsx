@@ -43,6 +43,7 @@ import { calculateDelta } from "@/app/utils/blogEditorHelpers/calculateDelta";
 import { updateCompSize } from "@/app/utils/blogEditorHelpers/updateCompSize";
 import { isAuthenticated } from "@/app/utils/blogEditorHelpers/isAuthenticated";
 import AuthError from "@/app/ui/create/authError";
+import { Block } from "@blocknote/core";
 
 interface IBlogPageEditor {
   edit?: boolean;
@@ -50,7 +51,7 @@ interface IBlogPageEditor {
 
 export default function BlogPageEditor(props: IBlogPageEditor) {
   const [addedContent, setAddedContent] = useState<IElement[]>([]);
-  const [lastId, setLastId] = useState(0);
+  const [lastId, setLastId] = useState<number>(0);
   const [showSelect, setShowSelect] = useState<boolean>(false);
   const [previewMode, setPreviewMode] = useState<boolean>(false);
   const [draggingComponentId, setDraggingComponentId] = useState<number>(null);
@@ -123,9 +124,13 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
 
         setIsLoading(true);
         try {
-          const data = await getPage(params.slug);
+          const page = await getPage(params.slug);
           if (!isDataFetched) {
-            setAddedContent(data.data);
+            setAddedContent(page.data);
+
+            // sets the lastId to the last id of the fetched content
+            const lastComp = page.data.at(-1);
+            setLastId(lastComp.id + 1);
           }
         } catch (error) {
           if (!isDataFetched) {
@@ -287,7 +292,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
     const page = await createPage(addedContent, subdomain, {
       parentMargin: parentMargin,
     } as IOtherData);
-    if (page.error) {
+    if (page && page.error) {
       toast({
         title: "Something went wrong.",
         description: page.error,
@@ -433,15 +438,17 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
     }
   };
 
-  const handleInputChange = (id: number, text: string) => {
+  const handleInputChange = (compId: number, text: string, blocks?: Block[]) => {
     setAddedContent((prevAddedContent) => {
       return prevAddedContent.map((component) => {
-        if (component.id === id) {
+        if (component.id === compId) {
           return {
             ...component,
             input: text,
+            inputBlocks: blocks,
           };
         }
+        return component;
       });
     });
   };
@@ -1030,6 +1037,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                     >
                       {/* <div ref={(el) => (componentRefs.current[component.id] = el)}> */}
                       <DynamicElement
+                        key={component.id}
                         element={component}
                         handleInputChange={handleInputChange}
                         handlePositionChange={handlePositionChange}
@@ -1098,7 +1106,6 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                   <div
                     key={component.id}
                     className="z-5 absolute border-2 border-purple-400 border-dashed"
-                    // TODO should check for collision before moving (experiment with calculateTranslate)
                     style={{
                       transform: `translate3d(${
                         component.position.x + screenSize.deltaX < 0
@@ -1150,8 +1157,10 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                               id: component.id,
                             });
                           }}
+                          key={component.id}
                         >
                           <DynamicElement
+                            key={component.id}
                             tag={component.tag}
                             id={component.id}
                             element={component}
@@ -1159,10 +1168,8 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                             handleInputChange={handleInputChange}
                             previewMode={previewMode}
                             input={component.input}
+                            draggingComponentId={draggingComponentId}
                           />
-                          <p className="text-white">x: {component.position.x}</p>
-                          <p className="text-white">y: {component.position.y}</p>
-                          <p className="text-white">id: {component.id}</p>
                         </Resizable>
                       </Sortable>
                     </>
@@ -1185,24 +1192,11 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                       !item.disabled
                   )
                   .map((item) => (
-                    <div
-                      key={item.id}
-                      // className="w-full h-screen"
-                      className={`${item.positionClass} `}
-                      // style={{
-                      //   width: item.size.width,
-                      //   height: item.size.height,
-                      // }}
-                    >
+                    <div key={item.id} className={`${item.positionClass} `}>
                       <DynamicElement
-                        key={item.id}
-                        tag={item.tag}
-                        id={item.id}
                         element={item}
-                        gridId={item.gridId}
-                        handleInputChange={handleInputChange}
-                        previewMode={previewMode}
-                        input={item.input}
+                        isDragOverlayRender={true}
+                        id={item.id}
                       />
                     </div>
                   ))}

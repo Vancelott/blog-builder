@@ -1,23 +1,41 @@
 "use client";
 
 import { useState } from "react";
+import TextEditorBlock from "@/app/ui/create/textEditorBlock";
+import "@blocknote/shadcn/style.css";
+import { Block } from "@blocknote/core";
+import { Editor } from "@/app/ui/create/dynamicTextEditorBlock";
 
-export function TextArea({ handleInputChange, id, style, input }) {
-  const [value, setValue] = useState<string>(
-    "Lorem, ipsum dolor sit amet consectetur adipisicing elit. Eligendi, consequatur accusamus nemo, hic voluptatum tenetur cupiditate iure amet, minus labore fugiat. Illo in iure repellendus quaerat, tempora voluptate neque debitis."
-  );
-
-  const handleInput = (newValue: string) => {
-    setValue(newValue);
-    handleInputChange(id, newValue);
+export function TextArea({
+  handleInputChange,
+  id,
+  style,
+  input,
+  inputBlocks,
+  isStaticRender,
+  isDragOverlayRender,
+}) {
+  const handleInput = (newInputValue: string, newBlockValue: Block[]) => {
+    handleInputChange(id, newInputValue, newBlockValue);
   };
 
+  if (isStaticRender || isDragOverlayRender) {
+    return (
+      // TODO update theme if possible
+      <div className="bn-container dark bn-shadcn" data-color-scheme="dark">
+        <div className="bn-default-styles" dangerouslySetInnerHTML={{ __html: input }} />
+      </div>
+    );
+  }
+
   return (
-    <textarea
-      style={style}
-      onChange={(e) => handleInput(e.target.value)}
-      className="bg-transparent border-none text-white text-wrap overflow-hidden resize-none"
-      value={!input ? value : input}
-    />
+    <div style={style}>
+      <TextEditorBlock
+        handleInput={handleInput}
+        id={id}
+        input={input}
+        blocks={inputBlocks}
+      />
+    </div>
   );
 }

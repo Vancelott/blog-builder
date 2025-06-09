@@ -2,18 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
-.bn-editor {
+/* .bn-container[blog-editor] .bn-editor{ */
+.blog-editor .bn-editor {
   @apply h-screen w-full pt-20 sm:pt-32 sm:ps-14 sm:pe-14;
   padding-inline-start: 0.5rem !important;
   padding-inline-end: 0.5rem !important;
 }
 
 @media (min-width: 640px) {
-  .bn-editor {
+  .blog-editor .bn-editor {
     width: "90%";
     padding-inline-start: 3.5rem !important;
     padding-inline-end: 3.5rem !important;
   }
+}
+
+.text-editor-block :not(.bn-toolbar):not(.bn-toolbar *) {
+  padding-inline-start: 0 !important;
+  padding-inline-end: 0 !important;
+  padding-inline: 0 !important;
+  padding-top: 0 !important;
+  cursor: text;
+}
+
+.text-editor-block .bn-editor {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background-color: transparent !important;
+}
+.text-editor-block .bn-shadcn .bn-editor {
+  background-color: transparent !important;
 }
 
 @layer base {

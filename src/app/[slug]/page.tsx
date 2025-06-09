@@ -27,6 +27,11 @@ export default function Page() {
         setIsLoading(true);
         try {
           const data = await getPage(params.slug);
+          if (!data) {
+            setIsLoading(false);
+            return;
+          }
+
           if (!isDataFetched) {
             setPageData(data);
           }
@@ -159,7 +164,7 @@ export default function Page() {
                 tag={item.tag}
                 id={item.id}
                 mainGridRef={mainGridRef ? mainGridRef : null}
-                shouldAdjustPosition={true}
+                isStaticRender={true}
               />
               // </div>
             );

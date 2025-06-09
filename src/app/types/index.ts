@@ -1,5 +1,6 @@
 import { ResizeCallback } from "re-resizable";
 import { DragEndEvent } from "@dnd-kit/core";
+import { Block } from "@blocknote/core";
 
 export type Resize = {
   height: number | string;
@@ -23,6 +24,7 @@ export interface IElement {
   style: string;
   positionClass: string;
   input: string;
+  inputBlocks: Block[];
   placeholder: string;
   dnd: "Droppable" | "Draggable" | null;
   parentId: number | null;
@@ -49,7 +51,8 @@ export interface IDynamicElement {
   input: string;
   positionStyle: string;
   ref: HTMLDivElement;
-  shouldAdjustPosition: boolean;
+  isStaticRender: boolean;
+  isDragOverlayRender: boolean;
   handlePositionChange: (position: string) => void;
 }
 

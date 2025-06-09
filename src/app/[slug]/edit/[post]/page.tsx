@@ -141,6 +141,7 @@ export default function Page() {
               onChange={() => {
                 handleSaveDraft(editor.document);
               }}
+              className="blog-editor"
             />
           </div>
         </>

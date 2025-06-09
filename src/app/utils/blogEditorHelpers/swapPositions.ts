@@ -10,7 +10,7 @@ export const swapPositions: ISwapPositions = (
   const swappedComponent = addedContent.find((item) => item.id === newStatus);
 
   setAddedContent((prevAddedContent) => {
-    const updatedContent = prevAddedContent.map((component) => {
+    return prevAddedContent.map((component) => {
       if (component.id === draggedComponent.id) {
         return {
           ...component,

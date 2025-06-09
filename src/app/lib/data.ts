@@ -100,6 +100,8 @@ export const updatePage = async (
 ) => {
   const session = await auth();
 
+  console.log(data);
+
   if (!subdomain) {
     return { error: "The blog page could not be updated, please try again." };
   }

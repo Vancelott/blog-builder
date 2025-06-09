@@ -30,7 +30,7 @@ export default function SubdomainDialog(props) {
 
     setError("");
     const result = await shouldCreateOrUpdate(subdomain);
-    if (result.error) {
+    if (result && result.error) {
       setError(result.error);
     }
   };

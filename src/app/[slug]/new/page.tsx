@@ -163,7 +163,11 @@ export default function Page() {
             </Button>
           </div>
           <div className="w-4/5 lg:w-2/5 rounded-lg">
-            <BlockNoteView editor={editor} onChange={() => handleSaveDraft()} />
+            <BlockNoteView
+              editor={editor}
+              onChange={() => handleSaveDraft()}
+              className="blog-editor"
+            />
           </div>
         </>
       )}
