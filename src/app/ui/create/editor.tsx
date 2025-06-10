@@ -5,7 +5,7 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
 import "@blocknote/shadcn/style.css";
 
-export default function DynamicEditor() {
+export default function Editor() {
   const editor = useCreateBlockNote();
 
   return <BlockNoteView editor={editor} />;

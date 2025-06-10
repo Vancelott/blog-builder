@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import TextEditorBlock from "@/app/ui/create/textEditorBlock";
+import { useMemo } from "react";
 import "@blocknote/shadcn/style.css";
 import { Block } from "@blocknote/core";
-import { Editor } from "@/app/ui/create/dynamicTextEditorBlock";
+import dynamic from "next/dynamic";
 
 export function TextArea({
   handleInputChange,
@@ -19,6 +18,11 @@ export function TextArea({
     handleInputChange(id, newInputValue, newBlockValue);
   };
 
+  const EditorBlock = useMemo(
+    () => dynamic(() => import("@/components/textEditorBlock"), { ssr: false }),
+    []
+  );
+
   if (isStaticRender || isDragOverlayRender) {
     return (
       // TODO update theme if possible
@@ -30,12 +34,7 @@ export function TextArea({
 
   return (
     <div style={style}>
-      <TextEditorBlock
-        handleInput={handleInput}
-        id={id}
-        input={input}
-        blocks={inputBlocks}
-      />
+      <EditorBlock handleInput={handleInput} id={id} input={input} blocks={inputBlocks} />
     </div>
   );
 }

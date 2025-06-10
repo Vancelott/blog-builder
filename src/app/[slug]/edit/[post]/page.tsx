@@ -7,7 +7,6 @@ import "@blocknote/shadcn/style.css";
 import { getBlogPost, getDraftPost } from "@/app/lib/data";
 import { useParams } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
-import "@blocknote/shadcn/style.css";
 import { createOrUpdateDraft, createOrUpdateBlogPost } from "@/app/lib/data";
 import { Button } from "@/components/ui/button";
 import { notFound } from "next/navigation";
