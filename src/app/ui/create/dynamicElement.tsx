@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { PropsWithChildren } from "react";
-import { IDynamicElement } from "@/app/types/index";
+import { IDynamicElement, RenderedDynamicElement } from "@/app/types/index";
 import { TextArea } from "@/app/ui/create/components/textArea";
 import { Header } from "@/app/ui/create/components/header";
 import { UserNavBar } from "@/app/ui/create/components/userNavBar";
 import { ChildElements } from "@/app/ui/create/childElements";
 import { CreateComponents } from "@/app/utils/constants";
 
+/* TODO refactor the props to better utilize the `element` prop and update the `IDynamicElement` type */
 export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
   const [screenSize, setScreenSize] = useState<{ [name: string]: number }>({
     width: window?.innerWidth,
@@ -102,19 +103,20 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
       <>
         {CreateComponents.map((mappedComponent) => {
           if (mappedComponent.tag === props.element.tag) {
-            const Component = mappedComponent.component || "div";
+            const Component: RenderedDynamicElement = mappedComponent.component || "div";
             return (
-              <div key={props.element.id}>
+              <div key={props.element.id} className="w-full h-full">
                 <Component
                   id={props.element.id}
                   input={props.element.input}
                   isDragOverlayRender={props.isDragOverlayRender}
+
                   // positionClass={props.element.positionClass}
                   // style={{
                   //   width: props.element.size.width,
                   //   height: props.element.size.height,
                   // }}
-                ></Component>
+                />
               </div>
             );
           }
@@ -129,16 +131,10 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
       <>
         {CreateComponents.map((mappedComponent) => {
           if (mappedComponent.tag === props.element.tag) {
-            const Component = mappedComponent.component || "div";
-            // if (props.previewMode) {
-            //   return (
-            //     <div key={props.element.id}>
-            //       <p>{props.input}</p>
-            //     </div>
-            //   );
-            // }
+            const Component: RenderedDynamicElement = mappedComponent.component || "div";
             return (
               <div
+                className="w-full h-full"
                 key={props.element.id}
                 style={
                   props.isStaticRender
@@ -153,7 +149,6 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
                 }
               >
                 <Component
-                  key={props.element.id}
                   positionClass={props.element.positionClass}
                   id={props.element.id}
                   input={props.element.input}

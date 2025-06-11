@@ -2,12 +2,13 @@ import { IElement } from "@/app/types/index";
 import { TextArea } from "@/app/ui/create/components/textArea";
 import { UserNavBar } from "@/app/ui/create/components/userNavBar";
 import { Header } from "@/app/ui/create/components/header";
-// import { TextArea, UserNavBar } from "@/app/ui/create/components";
+import { Image } from "@/app/ui/create/components/image";
 
 export const CreateComponents = [
   { tag: "textarea", component: TextArea },
   { tag: "nav bar", component: UserNavBar },
   { tag: "header", component: Header },
+  { tag: "image", component: Image },
 ];
 
 export const styles: Array = [
@@ -88,6 +89,30 @@ export const elements: IElement[] = [
       deltaWidth: 0,
       minHeight: "64px",
       minWidth: "100vw",
+    },
+  },
+  {
+    id: null,
+    componentId: 3,
+    tag: "image",
+    style: "basic",
+    // positionClass: "flex justify-center place-items-center w-full h-full bg-gray-600",
+    positionClass: "flex justify-center place-items-center",
+    input: "",
+    placeholder: "Image",
+    dnd: "Draggable",
+    otherElements: [],
+    isDropped: false,
+    parentId: null,
+    gridId: null,
+    position: { x: 0, y: 0 },
+    size: {
+      height: 200,
+      width: 200,
+      deltaHeight: 0,
+      deltaWidth: 0,
+      minHeight: "150px",
+      minWidth: "150px",
     },
   },
 ];

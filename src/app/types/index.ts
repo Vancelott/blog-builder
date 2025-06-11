@@ -1,6 +1,6 @@
 import { ResizeCallback } from "re-resizable";
 import { DragEndEvent } from "@dnd-kit/core";
-import { Block } from "@blocknote/core";
+import { PartialBlock } from "@blocknote/core";
 
 export type Resize = {
   height: number | string;
@@ -24,7 +24,7 @@ export interface IElement {
   style: string;
   positionClass: string;
   input: string;
-  inputBlocks: Block[];
+  inputBlocks: PartialBlock[];
   placeholder: string;
   dnd: "Droppable" | "Draggable" | null;
   parentId: number | null;
@@ -54,7 +54,23 @@ export interface IDynamicElement {
   isStaticRender: boolean;
   isDragOverlayRender: boolean;
   handlePositionChange: (position: string) => void;
+  handleInputChange: (compId: number, text: string, blocks?: PartialBlock[]) => void;
 }
+
+export type RenderedDynamicElement = Partial<
+  Pick<
+    IDynamicElement,
+    | "id"
+    | "input"
+    | "isDragOverlayRender"
+    | "positionClass"
+    | "inputBlocks"
+    | "handleInputChange"
+    | "isStaticRender"
+  >
+> & {
+  style: { height: number; width: number };
+};
 
 export interface SlugPageData {
   data: IElement[];

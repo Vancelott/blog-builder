@@ -5,12 +5,12 @@ import { BlockNoteView } from "@blocknote/shadcn";
 import "@blocknote/shadcn/style.css";
 import { BlockNoteEditor } from "@blocknote/core";
 import { en } from "@blocknote/core/locales";
-import { Block } from "@blocknote/core";
+import { PartialBlock } from "@blocknote/core";
 
 export default function TextEditorBlock(props) {
-  const [initialContent, setInitialContent] = useState<Block[] | undefined | "loading">(
-    undefined
-  );
+  const [initialContent, setInitialContent] = useState<
+    PartialBlock[] | undefined | "loading"
+  >(undefined);
 
   const { handleInput } = props;
   const locale = en;

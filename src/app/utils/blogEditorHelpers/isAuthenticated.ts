@@ -8,10 +8,12 @@ export const isAuthenticated = async (subdomain: string) => {
   const page = await getPage(subdomain);
 
   if (!session) {
+    console.log("The user is Unauthenticated");
     return false;
   }
 
   if (page.userId !== (session.userId ?? session.user.id)) {
+    console.log("The user is Unauthorized");
     return false;
   }
 

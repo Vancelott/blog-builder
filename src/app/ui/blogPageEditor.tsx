@@ -43,7 +43,7 @@ import { calculateDelta } from "@/app/utils/blogEditorHelpers/calculateDelta";
 import { updateCompSize } from "@/app/utils/blogEditorHelpers/updateCompSize";
 import { isAuthenticated } from "@/app/utils/blogEditorHelpers/isAuthenticated";
 import AuthError from "@/app/ui/create/authError";
-import { Block } from "@blocknote/core";
+import { PartialBlock } from "@blocknote/core";
 
 interface IBlogPageEditor {
   edit?: boolean;
@@ -438,7 +438,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
     }
   };
 
-  const handleInputChange = (compId: number, text: string, blocks?: Block[]) => {
+  const handleInputChange = (compId: number, text: string, blocks?: PartialBlock[]) => {
     setAddedContent((prevAddedContent) => {
       return prevAddedContent.map((component) => {
         if (component.id === compId) {
@@ -1147,7 +1147,6 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                             handleUpdateCompSize(component.id, d);
                           }}
                           onResize={(e, direction, ref, d) => {
-                            // TODO refactor this so that the drag overlay doesn't show the initial dragging of the element
                             if (!component.disabled) {
                               toggleComponentDraggable(component.id);
                             }
@@ -1158,6 +1157,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                             });
                           }}
                           key={component.id}
+                          className={`${component.positionClass}`}
                         >
                           <DynamicElement
                             key={component.id}
@@ -1186,17 +1186,24 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
               >
                 {addedContent
                   .filter(
-                    (item) =>
-                      item.id !== tempSizeDelta.id &&
-                      item?.id === draggingComponentId &&
-                      !item.disabled
+                    (component) =>
+                      component.id !== tempSizeDelta.id &&
+                      component?.id === draggingComponentId &&
+                      !component.disabled
                   )
-                  .map((item) => (
-                    <div key={item.id} className={`${item.positionClass} `}>
+                  .map((component) => (
+                    <div
+                      key={component.id}
+                      className={`${component.positionClass} `}
+                      style={{
+                        width: component.size.width,
+                        height: component.size.height,
+                      }}
+                    >
                       <DynamicElement
-                        element={item}
+                        element={component}
                         isDragOverlayRender={true}
-                        id={item.id}
+                        id={component.id}
                       />
                     </div>
                   ))}

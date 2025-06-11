@@ -4,16 +4,19 @@ import { useMemo } from "react";
 import "@blocknote/shadcn/style.css";
 import { Block } from "@blocknote/core";
 import dynamic from "next/dynamic";
+import { RenderedDynamicElement } from "@/app/types/index";
 
-export function TextArea({
-  handleInputChange,
-  id,
-  style,
-  input,
-  inputBlocks,
-  isStaticRender,
-  isDragOverlayRender,
-}) {
+export function TextArea(props: RenderedDynamicElement) {
+  const {
+    handleInputChange,
+    id,
+    style,
+    input,
+    inputBlocks,
+    isStaticRender,
+    isDragOverlayRender,
+  } = props;
+
   const handleInput = (newInputValue: string, newBlockValue: Block[]) => {
     handleInputChange(id, newInputValue, newBlockValue);
   };
