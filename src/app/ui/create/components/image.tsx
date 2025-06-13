@@ -8,15 +8,16 @@ import { useToast } from "@/hooks/use-toast";
 import { RenderedDynamicElement } from "@/app/types/index";
 
 export function Image(props: RenderedDynamicElement) {
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState([]);
 
   const { toast } = useToast();
 
   const { id, isDragOverlayRender, isStaticRender, input, handleInputChange } = props;
 
-  const renderImage = (inputSrc?, resultSrc?) => {
-    if (inputSrc || resultSrc) {
-      return <NextImage src={inputSrc ?? resultSrc} alt="" fill />;
+  const renderImage = (inputSrc?, result?) => {
+    if (inputSrc || result.length > 0) {
+      const img = inputSrc ? inputSrc : result[0].ufsUrl;
+      return <NextImage src={img} alt="" fill />;
     }
 
     return (

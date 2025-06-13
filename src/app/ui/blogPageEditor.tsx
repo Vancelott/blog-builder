@@ -34,6 +34,7 @@ import { getPage } from "@/app/lib/data";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/hooks/use-toast";
 import { validatePosition } from "@/app/utils/blogEditorHelpers/validatePosition";
+import { validateSize } from "@/app/utils/blogEditorHelpers/validateSize";
 import { swapPositions } from "@/app/utils/blogEditorHelpers/swapPositions";
 import { updatePosition } from "@/app/utils/blogEditorHelpers/updatePosition";
 import { getResizableStyle } from "@/app/utils/blogEditorHelpers/getResizableStyle";
@@ -395,7 +396,6 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
       });
       return;
     }
-
     const elementId = active.id as string;
     const newStatus = over.id as string | number;
     const draggedComponent = addedContent.find((item) => item.id === elementId);
@@ -411,26 +411,26 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
       isParentComponent
     );
 
-    if (!isPositionValid) {
+    const isSwap =
+      collisions.length >= 2 &&
+      elementId !== newStatus &&
+      !isNaN(newStatus) &&
+      !isParentComponent;
+
+    if (!isPositionValid && !isSwap) {
       return toast({
         title: "Uh oh! Position invalid.",
         description: "The component was dropped out of bounds.",
         className: "bg-yellow-100 border-yellow-300 m-2",
       });
-      return;
     }
 
-    if (draggedComponent.parentId !== null && collisions.length >= 2) {
+    if (draggedComponent.parentId !== null && !isSwap) {
       return;
     }
 
     // handles the swapping of components (if elementId == newStatus, it just means the component has been moved, and not swapped)
-    if (
-      collisions.length >= 2 &&
-      elementId !== newStatus &&
-      !isNaN(newStatus) &&
-      !isParentComponent
-    ) {
+    if (isSwap) {
       swapPositions(addedContent, setAddedContent, draggedComponent, newStatus);
     } else {
       updatePosition(setAddedContent, elementId, newStatus, delta, screenSize);
@@ -454,6 +454,26 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
   };
 
   const handleUpdateCompSize = (compId: number, d: ResizeCallback.delta) => {
+    const isChildComponent = addedContent.find(
+      (component) => component.id == compId && component.parentId !== null
+    );
+    const parentComp = addedContent.find(
+      (component) => component.id === isChildComponent?.parentId
+    );
+    const isChildSizeValid = validateSize(
+      d,
+      findResizingComponent(),
+      isChildComponent,
+      parentMargin,
+      parentComp.size,
+      screenSize
+    );
+
+    if (isChildComponent && !isChildSizeValid) {
+      setTempSizeDelta({ height: 0, width: 0, id: null });
+      return;
+    }
+
     updateCompSize(
       findResizingComponent(),
       isResizingCompColliding,
@@ -626,10 +646,9 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
     (comp, deltaX, deltaY, currentResizingComp) => {
       const collidingComponents = addedContent.filter(
         (item) =>
-          // TODO add deltaX? and switch to <= / >=
+          // TODO switch to <= / >= ?
           comp.position.x + deltaX < item.position.x + item.size.width &&
           comp.position.x + comp.size.width + deltaX > item.position.x &&
-          // TODO add deltaY?
           comp.position.y + deltaY < item.position.y + item.size.height &&
           comp.position.y + comp.size.height + deltaY > item.position.y &&
           item.id !== comp.id &&
@@ -858,7 +877,6 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
 
                     const currentAxis = deltaX <= deltaY ? "x" : "y";
 
-                    // TODO when resizing on the Y axis, there's a case where deltaX == deltaY
                     const adjustWidth = currentAxis === "x" && resizeOrMove;
                     const adjustHeight = currentAxis === "y" && resizeOrMove;
 
@@ -1043,13 +1061,21 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                         handlePositionChange={handlePositionChange}
                         previewMode={previewMode}
                         input={component.input}
-                        childElements={addedContent.filter(
-                          (items) => items.parentId === component.id
-                        )}
+                        // childElements={addedContent.filter(
+                        //   (items) => items.parentId === component.id
+                        // )}
+                        childElements={component.otherElements}
                         tempSizeDelta={tempSizeDelta}
                         // TODO handle this prop for any future refs
                         ref={component.tag === "nav bar" ? navBarSizeRef : null}
                         draggableRef={draggableRef}
+                        childHandlers={{
+                          handleInputChange,
+                          handleSelectComponent,
+                          handleUpdateCompSize,
+                          toggleComponentDraggable,
+                          setTempSizeDelta,
+                        }}
                       />
                       {/* </div> */}
                     </Resizable>
@@ -1084,7 +1110,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
           >
             <SortableContext
               items={addedContent
-                .filter((component) => component.parentId === null)
+                ?.filter((component) => component.parentId === null)
                 .map((component) => component.id)}
               strategy={rectSwappingStrategy}
             >
@@ -1128,13 +1154,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                       <Sortable
                         id={component.id}
                         position={component.position}
-                        screenSize={screenSize}
-                        // className="flex z-40 absolute "
                         disabled={component.disabled}
-                        style={{
-                          width: component.size.width,
-                          height: component.size.height,
-                        }}
                       >
                         <Resizable
                           size={{
@@ -1156,7 +1176,6 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                               id: component.id,
                             });
                           }}
-                          key={component.id}
                           className={`${component.positionClass}`}
                         >
                           <DynamicElement

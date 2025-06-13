@@ -1,6 +1,7 @@
 import { ResizeCallback } from "re-resizable";
 import { DragEndEvent } from "@dnd-kit/core";
 import { PartialBlock } from "@blocknote/core";
+import { ResizeCallback } from "re-resizable";
 
 export type Resize = {
   height: number | string;
@@ -55,6 +56,16 @@ export interface IDynamicElement {
   isDragOverlayRender: boolean;
   handlePositionChange: (position: string) => void;
   handleInputChange: (compId: number, text: string, blocks?: PartialBlock[]) => void;
+  childHandlers: {
+    handleInputChange: (compId: number, text: string, blocks?: PartialBlock[]) => void;
+    handleSelectComponent: () => void;
+    handleUpdateCompSize: () => void;
+    handlePositionChange: (position: string) => void;
+    toggleComponentDraggable: () => void;
+    setTempSizeDelta: React.Dispatch<
+      React.SetStateAction<{ [name: string]: number | null }>
+    >;
+  };
 }
 
 export type RenderedDynamicElement = Partial<
@@ -140,4 +151,13 @@ export interface IValidatePosition {
   screenSize: { [name: string]: number };
   parentMargin: { [name: string]: number };
   isParentComponent: IElement;
+}
+
+export interface IValidateSize {
+  delta: ResizeCallback.delta;
+  resizingComponent: IElement;
+  isChildComponent: IElement;
+  parentMargin: { [name: string]: number };
+  parentSize: Resize;
+  screenSize: { [name: string]: number };
 }

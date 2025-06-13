@@ -3,9 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { PropsWithChildren } from "react";
 import { IDynamicElement, RenderedDynamicElement } from "@/app/types/index";
-import { TextArea } from "@/app/ui/create/components/textArea";
 import { Header } from "@/app/ui/create/components/header";
-import { UserNavBar } from "@/app/ui/create/components/userNavBar";
 import { ChildElements } from "@/app/ui/create/childElements";
 import { CreateComponents } from "@/app/utils/constants";
 
@@ -110,7 +108,6 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
                   id={props.element.id}
                   input={props.element.input}
                   isDragOverlayRender={props.isDragOverlayRender}
-
                   // positionClass={props.element.positionClass}
                   // style={{
                   //   width: props.element.size.width,
@@ -160,11 +157,13 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
                   handleInputChange={props.handleInputChange}
                   isStaticRender={props.isStaticRender}
                 >
-                  <div className="z-20 mt-8">
+                  <div className="flex z-20 m-8 flex-col gap-8">
                     {props.childElements && props.element && (
                       <ChildElements
                         childElements={props.childElements}
                         draggableRef={props.draggableRef}
+                        isStaticRender={props.isStaticRender}
+                        handlers={props.childHandlers}
                       />
                     )}
                   </div>
@@ -175,53 +174,6 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
           return null;
         })}
       </>
-    );
-  }
-
-  if (props.element.grid && isDragOverlayRender) {
-    const comp = CreateComponents.map(
-      (mappedComponent) => mappedComponent.tag === props.element.tag
-    );
-    const Component = comp.component || "div";
-
-    return (
-      <div
-        // key={props.element.id}
-        style={
-          props.isStaticRender
-            ? {
-                transform: `translate3d(${calculatePosition("X")}px, ${calculatePosition(
-                  "Y"
-                )}px, 0)`,
-                width: props.element.size.width,
-                height: props.element.size.height,
-              }
-            : null
-        }
-      >
-        <Component
-          // key={props.element.id}
-          positionClass={props.element.positionClass}
-          id={props.element.id}
-          input={props.element.input}
-          inputBlocks={props.element.inputBlocks}
-          style={{
-            width: props.element.size.width,
-            height: props.element.size.height,
-          }}
-          handleInputChange={props.handleInputChange}
-          isStaticRender={props.isStaticRender}
-        >
-          <div className="z-20 mt-8">
-            {props.childElements && props.element && (
-              <ChildElements
-                childElements={props.childElements}
-                draggableRef={props.draggableRef}
-              />
-            )}
-          </div>
-        </Component>
-      </div>
     );
   }
 
