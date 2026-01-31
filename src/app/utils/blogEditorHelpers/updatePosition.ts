@@ -1,93 +1,123 @@
 import { IUpdatePosition } from "@/app/types/index";
 
 export const updatePosition: IUpdatePosition = (
+  allAddedContent,
   setAddedContent,
   elementId,
   newStatus,
   delta,
-  screenSize
+  screenSize,
 ) => {
-  // TODO once this is done, maybe make it so that the width/height get scaled accordingly as well? Read through - https://medium.com/@miheer.sharma1/responsive-scene-elements-in-react-js-video-editor-9bc7d7730ed0 again
-  const calculatePercentage = (compPos, delta, screen) => {
-    if (compPos !== 0) {
-      const deltaPercent = (delta / screen) * 100;
+  // const calculatePercentage = (compPos, delta, screen) => {
+  //   if (compPos !== 0) {
+  //     const deltaPercent = (delta / screen) * 100;
 
-      return Math.max(0, Math.min(100, compPos + deltaPercent));
-    }
+  //     return Math.max(0, Math.min(100, compPos + deltaPercent));
+  //   }
 
-    return ((compPos + delta) / screen) * 100;
-  };
+  //   return ((compPos + delta) / screen) * 100;
+  // };
 
-  setAddedContent((prevAddedContent) => {
-    return prevAddedContent.map((component) => {
-      if (component.id === elementId) {
-        if (isNaN(newStatus)) {
-          return {
-            ...component,
-            gridId: newStatus,
-            parentId: null,
-            // TODO delete isDropped?
-            isDropped: true,
-            position: {
-              x: component.position.x + delta.x,
-              y: component.position.y + delta.y,
-              xPercent: calculatePercentage(
-                !component.position.xPercent
-                  ? component.position.x
-                  : component.position.xPercent,
-                delta.x,
-                screenSize.width
-              ),
-              yPercent: calculatePercentage(
-                !component.position.yPercent
-                  ? component.position.y
-                  : component.position.yPercent,
-                delta.y,
-                screenSize.height
-              ),
-            },
-          };
-        } else {
-          // used to prevent an accidental update of parentId to a swappable component
-          const droppedComponent = prevAddedContent.find(
-            (component) => component.id === newStatus
-          );
+  const comp = allAddedContent.find((item) => item.id === elementId);
 
-          return {
-            ...component,
-            // TODO uncomment or delete once components don't get dragged upon resizing
-            // gridId: null,
-            parentId: droppedComponent?.dnd === "Droppable" ? newStatus : null,
-            isDropped: true,
-            position: {
-              x: component.position.x + delta.x,
-              y: component.position.y + delta.y,
-              // TODO is the percentage based position needed here?
-              // xPercent: calculatePercentage(
-              //   component.position.xPercent ?? component.position.x,
-              //   delta.x,
-              //   screenSize.width
-              // ),
-              // yPercent: calculatePercentage(
-              //   component.position.yPercent ?? component.position.y,
-              //   delta.y,
-              //   screenSize.height
-              // ),
-            },
-          };
-        }
-      }
+  // if newStatus is not a number, the component has just been dragged and dropped on the grid
+  if (isNaN(newStatus)) {
+    const parentComp = allAddedContent.find((item) => item.id === comp.parentId);
 
-      // if the comp has been dropped into a "parent" comp, it has to be added to its `otherElements` array
-      if (component.id === newStatus) {
-        const updatedElement = prevAddedContent.find((item) => item.id === elementId);
-        return {
-          ...component,
-          otherElements: [...component.otherElements, updatedElement],
-        };
-      }
+    setAddedContent((prev) => ({
+      ...prev,
+      byId: {
+        ...prev.byId,
+        ...(parentComp && {
+          [comp.parentId]: {
+            ...prev.byId[comp.parentId],
+            otherElements: prev.byId[comp.parentId].otherElements.filter(
+              (item) => item.id !== comp.id,
+            ),
+          },
+        }),
+        [comp.id]: {
+          ...comp,
+          gridId: newStatus,
+          parentId: null,
+          // TODO delete isDropped?
+          isDropped: true,
+          position: {
+            x: comp.position.x + delta.x,
+            y: comp.position.y + delta.y,
+            // xPercent: calculatePercentage(
+            //   !comp.position.xPercent ? comp.position.x : comp.position.xPercent,
+            //   delta.x,
+            //   screenSize.width,
+            // ),
+            // yPercent: calculatePercentage(
+            //   !comp.position.yPercent ? comp.position.y : comp.position.yPercent,
+            //   delta.y,
+            //   screenSize.height,
+            // ),
+          },
+        },
+      },
+    }));
+    // comp has been dragged from one droppable to another droppable
+  } else if (comp.parentId != null && !isNaN(newStatus)) {
+    const currentParent = allAddedContent.find((item) => item.id === comp.parentId);
+    const newParent = allAddedContent.find((item) => item.id === newStatus);
 
-      return component;
-    });
-  });
+    setAddedContent((prev) => ({
+      ...prev,
+      byId: {
+        ...prev.byId,
+        ...(currentParent && {
+          [comp.parentId]: {
+            ...prev.byId[comp.parentId],
+            otherElements: prev.byId[comp.parentId].otherElements.filter(
+              (item) => item.id !== comp.id,
+            ),
+          },
+        }),
+        ...(newParent && {
+          [newStatus]: {
+            ...prev.byId[newStatus],
+            otherElements: [...prev.byId[newStatus].otherElements, comp],
+          },
+        }),
+      },
+    }));
+    // handles the case where a child comp has been dropped into parent (droppable) comp
+  } else {
+    const parentComp = allAddedContent.find(
+      (item) => item.id === (newStatus ?? comp.parentId),
+    );
+
+    const addChild = [...parentComp?.otherElements, comp];
+    const updatedComp = {
+      ...comp,
+      parentId: parentComp?.dnd === "Droppable" ? parentComp.id : null, // prevents an update of parentId to a swappable (draggable) component
+      position: {
+        x: comp.position.x + delta.x,
+        y: comp.position.y + delta.y,
+      },
+    };
+    const updatedParent = {
+      ...parentComp,
+      otherElements: addChild,
+    };
+
+    setAddedContent((prev) => ({
+      // el1 gets dropped in el2 -> el1.parentId = el2.id ; el2.otherElements = [..., el1]
+      // el1 gets dropped onto grid -> el1.parentId = null ; el2.otherElements.filter without el1
+
+      ...prev,
+      byId: {
+        ...prev.byId,
+        [comp.id]: {
+          ...updatedComp,
+        },
+        [parentComp.id]: {
+          ...updatedParent,
+        },
+      },
+    }));
+  }
 };

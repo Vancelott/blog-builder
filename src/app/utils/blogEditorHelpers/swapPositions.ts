@@ -1,15 +1,29 @@
 import { arraySwap, arrayMove } from "@dnd-kit/sortable";
 import { ISwapPositions } from "@/app/types/index";
 
-export const swapPositions: ISwapPositions = (
-  addedContent,
+// TODO MAIN ISSUE using "props" instead of all 4 props results in the props being undefined
+// Update: Not sure what I was doing wrong, but if I update the call to this function to ({allAddedContent, setAddedContent, draggedComponent, newStatus}) and then just reference them as props here, it should all be good?
+export const swapPositions = (
+  allAddedContent,
   setAddedContent,
   draggedComponent,
   newStatus
-) => {
-  const swappedComponent = addedContent.find((item) => item.id === newStatus);
-  if (draggedComponent.parentId === swappedComponent.parentId) {
-    const parentComp = addedContent.find((item) => item.id === draggedComponent.parentId);
+): ISwapPositions => {
+  // const { allAddedContent, setAddedContent, draggedComponent, newStatus } = props;
+  console.log({ allAddedContent, setAddedContent, draggedComponent, newStatus });
+  const swappedComponent = allAddedContent.find((item) => item.id === newStatus);
+
+  const sameParent =
+    draggedComponent.parentId !== null &&
+    swappedComponent.parentId !== null &&
+    draggedComponent.parentId === swappedComponent.parentId;
+
+  // swap between child components within a parent component
+  // TODO check if this still works
+  if (sameParent) {
+    const parentComp = allAddedContent.find(
+      (item) => item.id === draggedComponent.parentId
+    );
     const draggedCompIndex = parentComp.otherElements.findIndex(
       (element) => element.id === draggedComponent.id
     );
@@ -23,34 +37,30 @@ export const swapPositions: ISwapPositions = (
       swappedCompIndex
     );
 
-    setAddedContent((prevAddedContent) => {
-      return prevAddedContent.map((component) => {
-        if (component.id === parentComp.id) {
-          return {
-            ...component,
-            otherElements: reorderedElements,
-          };
-        }
-        return component;
-      });
-    });
+    setAddedContent((prev) => ({
+      ...prev,
+      byId: {
+        ...prev.byId,
+        [parentComp.id]: {
+          ...parentComp,
+          otherElements: reorderedElements,
+        },
+      },
+    }));
   }
-  const updatedContent = setAddedContent((prevAddedContent) => {
-    return prevAddedContent.map((component) => {
-      if (component.id === draggedComponent.id) {
-        return {
-          ...component,
-          position: swappedComponent.position,
-        };
-      } else if (component.id === swappedComponent.id) {
-        return {
-          ...component,
-          position: draggedComponent.position,
-        };
-      }
-      return component;
-    });
-
-    return arraySwap(updatedContent, draggedComponent.id, swappedComponent.id);
-  });
+  // TODO else? but it won't make sense i think
+  setAddedContent((prev) => ({
+    ...prev,
+    byId: {
+      ...prev.byId,
+      [draggedComponent.id]: {
+        ...draggedComponent,
+        position: swappedComponent.position,
+      },
+      [swappedComponent.id]: {
+        ...swappedComponent,
+        position: draggedComponent.position,
+      },
+    },
+  }));
 };

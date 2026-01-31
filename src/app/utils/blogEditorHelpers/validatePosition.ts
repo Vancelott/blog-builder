@@ -5,7 +5,7 @@ export const validatePosition: IValidatePosition = (
   draggedComponent,
   screenSize,
   parentMargin,
-  isParentComponent
+  isParentComponent,
 ) => {
   const { marginTop, marginBottom, marginLeft, marginRight } = parentMargin;
 
@@ -15,16 +15,19 @@ export const validatePosition: IValidatePosition = (
     delta.y + draggedComponent.position.y + draggedComponent.size.height * 0.9 >
       screenSize.height - (marginTop + marginBottom)
   ) {
+    // TODO issue is here once again
+    console.log("Position invalid in `validatePosition`");
     return false;
   }
 
-  if (
-    !isParentComponent &&
-    (delta.x + draggedComponent.position.x < 0 ||
-      delta.y + draggedComponent.position.y < 0)
-  ) {
-    return false;
-  }
+  // if (
+  //   !isParentComponent &&
+  //   (delta.x + draggedComponent.position.x < 0 ||
+  //     delta.y + draggedComponent.position.y < 0)
+  // ) {
+  //   console.log("Position invalid in `validatePosition` 2");
+  //   return false;
+  // }
 
   return true;
 };

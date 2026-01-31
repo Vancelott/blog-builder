@@ -5,10 +5,14 @@ export const validateSize = (
   resizingComp,
   isChildComponent,
   parentMargin,
-  parentSize,
+  parentComp,
   screenSize
 ): IValidateSize => {
   const { marginTop, marginBottom, marginLeft, marginRight } = parentMargin;
+
+  if (!isChildComponent || !parentComp) {
+    return false;
+  }
 
   const parentHeight =
     parentSize.height === "100vh"

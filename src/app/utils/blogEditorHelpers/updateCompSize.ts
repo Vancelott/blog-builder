@@ -31,21 +31,25 @@ export const updateCompSize: IUpdateCompSize = (
     });
   }
 
-  setAddedContent((prevAddedContent) => {
-    return prevAddedContent.map((component) => {
-      if (component.id === compId) {
-        return {
-          ...component,
+  setAddedContent((prev) => {
+    const prevComp = prev.byId[compId];
+    const prevSize = prevComp.size;
+
+    return {
+      ...prev,
+      byId: {
+        ...prev.byId,
+        [compId]: {
+          ...prevComp,
           size: {
-            ...component.size,
-            height: parseInt(component.size.height) + parseInt(heightDelta),
-            width: parseInt(component.size.width) + parseInt(widthDelta),
-            deltaHeight: parseInt(component.size.deltaHeight) + parseInt(heightDelta),
-            deltaWidth: parseInt(component.size.deltaWidth) + parseInt(widthDelta),
+            ...prevSize,
+            height: parseInt(prevSize.height) + parseInt(heightDelta),
+            width: parseInt(prevSize.width) + parseInt(widthDelta),
+            deltaHeight: parseInt(prevSize.deltaHeight) + parseInt(heightDelta),
+            deltaWidth: parseInt(prevSize.deltaWidth) + parseInt(widthDelta),
           },
-        };
-      }
-      return component;
-    });
+        },
+      },
+    };
   });
 };

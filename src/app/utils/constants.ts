@@ -96,7 +96,6 @@ export const elements: IElement[] = [
     componentId: 3,
     tag: "image",
     style: "basic",
-    // positionClass: "flex justify-center place-items-center w-full h-full bg-gray-600",
     positionClass: "flex justify-center place-items-center",
     input: "",
     placeholder: "Image",

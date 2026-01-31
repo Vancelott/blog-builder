@@ -158,7 +158,7 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
                   isStaticRender={props.isStaticRender}
                 >
                   <div className="flex z-20 m-8 flex-col gap-8">
-                    {props.childElements && props.element && (
+                    {props.childElements?.length > 0 && props.element && (
                       <ChildElements
                         childElements={props.childElements}
                         draggableRef={props.draggableRef}

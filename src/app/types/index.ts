@@ -1,7 +1,6 @@
-import { ResizeCallback } from "re-resizable";
+import { NumberSize } from "re-resizable";
 import { DragEndEvent } from "@dnd-kit/core";
 import { PartialBlock } from "@blocknote/core";
-import { ResizeCallback } from "re-resizable";
 
 export type Resize = {
   height: number | string;
@@ -48,7 +47,7 @@ export interface IDynamicElement {
   className: string;
   previewMode: boolean;
   isDropped: boolean;
-  childElements: Array;
+  childElements: IElement[];
   input: string;
   positionStyle: string;
   ref: HTMLDivElement;
@@ -112,7 +111,7 @@ export interface ICalculateDelta {
 }
 
 export interface ISwapPositions {
-  addedContent: IElement[];
+  allAddedContent: IElement[];
   setAddedContent: React.Dispatch<React.SetStateAction<IElement[]>>;
   draggedComponent: IElement;
   newStatus: string | number;
@@ -122,7 +121,7 @@ export interface IUpdateCompSize {
   resizingComp: IElement;
   isResizingCompColliding: IElement[] | null;
   compId: number;
-  d: ResizeCallback.delta;
+  d: NumberSize;
   calculateDelta: (
     resizingComp: IElement,
     item: IElement,
@@ -138,6 +137,7 @@ export interface IUpdateParentMargin {
 }
 
 export interface IUpdatePosition {
+  allAddedContent: IElement[];
   setAddedContent: React.Dispatch<React.SetStateAction<IElement[]>>;
   elementId: string;
   newStatus: string | number;
@@ -154,10 +154,15 @@ export interface IValidatePosition {
 }
 
 export interface IValidateSize {
-  delta: ResizeCallback.delta;
+  delta: NumberSize;
   resizingComponent: IElement;
   isChildComponent: IElement;
   parentMargin: { [name: string]: number };
-  parentSize: Resize;
+  parentComponent: IElement;
   screenSize: { [name: string]: number };
+}
+
+export interface IPositionButtons {
+  handlePositionChange: (pos: string, id: number) => void;
+  id: number;
 }

@@ -28,7 +28,7 @@ import { Sortable } from "@/app/ui/create/sortable";
 import { useRef, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { elements, styles } from "@/app/utils/constants";
-import { Resizable, ResizeCallback } from "re-resizable";
+import { Resizable, NumberSize } from "re-resizable";
 import FloatingToolbar from "@/app/ui/create/floatingToolbar";
 import { getPage } from "@/app/lib/data";
 import { Spinner } from "@/components/ui/spinner";
@@ -51,21 +51,23 @@ interface IBlogPageEditor {
 }
 
 export default function BlogPageEditor(props: IBlogPageEditor) {
-  const [addedContent, setAddedContent] = useState<IElement[]>([]);
+  // const [addedContent, setAddedContent] = useState<IElement[]>([]);
+  const [addedContent, setAddedContent] = useState({ byId: {}, allIds: [] });
+
   const [lastId, setLastId] = useState<number>(0);
   const [showSelect, setShowSelect] = useState<boolean>(false);
   const [previewMode, setPreviewMode] = useState<boolean>(false);
-  const [draggingComponentId, setDraggingComponentId] = useState<number>(null);
+  const [draggingComponentId, setDraggingComponentId] = useState<number | null>(null);
   const [showGrid, setShowGrid] = useState<boolean>(false);
   const [navBarSize, setNavBarSize] = useState<{ size: number; marginDirection: string }>(
-    {}
+    {},
   );
   const [posState, setPosState] = useState<string>();
   const [screenSize, setScreenSize] = useState<{ [name: string]: number }>({
-    width: window?.innerWidth,
-    height: window?.innerHeight,
-    initialWidth: window?.innerWidth,
-    initialHeight: window?.innerHeight,
+    width: 0,
+    height: 0,
+    initialWidth: 0,
+    initialHeight: 0,
     deltaX: 0,
     deltaY: 0,
   });
@@ -105,11 +107,13 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
   });
   const sensors = useSensors(
     mouseSensor,
-    touchSensor
+    touchSensor,
     // keyboardSensor
   );
   const gridSize = 20; // pixels
   const snapToGridModifier = createSnapModifier(gridSize);
+
+  const allAddedContent = addedContent.allIds.map((id) => addedContent.byId[id]);
 
   useEffect(() => {
     let isDataFetched = false;
@@ -149,6 +153,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
     };
   }, [props.edit, params]);
 
+  // TODO optimize this
   useEffect(() => {
     if (posState == "Right") {
       setNavBarSize({
@@ -176,23 +181,28 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
 
   useEffect(() => {
     const handleResize = () => {
-      setScreenSize({
-        ...screenSize,
+      setScreenSize((prev) => ({
+        ...prev,
         width: window.innerWidth,
         height: window.innerHeight,
-        deltaX: window.innerWidth - screenSize.initialWidth,
-        deltaY: window.innerHeight - screenSize.initialHeight,
-      });
+        initialWidth: prev.initialWidth == 0 ? window.innerWidth : 0,
+        initialHeight: prev.initialHeight == 0 ? window.innerHeight : 0,
+        deltaX: prev.initialWidth ?? window.innerWidth - prev.initialWidth,
+        deltaY: prev.initialHeight ?? window.innerHeight - prev.initialHeight,
+      }));
     };
+
+    // run once on mount
+    handleResize();
 
     window.addEventListener("resize", handleResize);
 
     return () => {
       window.removeEventListener("resize", handleResize);
     };
-  }, [screenSize]);
+  }, []);
 
-  const handlePositionChange = async (pos: string) => {
+  const handlePositionChange = async (pos: string, id: number) => {
     if (pos === posState) {
       return;
     }
@@ -231,29 +241,29 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
     ];
 
     const { position, className, size } = positionClasses.find(
-      (item) => item.position === pos
+      (item) => item.position === pos,
     );
 
-    setAddedContent((prevAddedContent) => {
-      return prevAddedContent.map((component) => {
-        if (component.tag === "nav bar") {
-          return {
-            ...component,
-            positionClass: className,
-            position: { ...component.position, placement: position },
-            size: {
-              deltaWidth: 0,
-              deltaHeight: 0,
-              width: size.width,
-              height: size.height,
-              minWidth: size.minWidth,
-              minHeight: size.minHeight,
-            },
-          };
-        }
-        return component;
-      });
-    });
+    setAddedContent((prev) => ({
+      ...prev,
+      byId: {
+        ...prev.byId,
+        [id]: {
+          ...prev.byId[id],
+          positionClass: className,
+          position: { placement: position },
+          size: {
+            deltaWidth: 0,
+            deltaHeight: 0,
+            width: size.width,
+            height: size.height,
+            minWidth: size.minWidth,
+            minHeight: size.minHeight,
+          },
+        },
+      },
+    }));
+
     await updateParentMargin(setParentMargin, componentRefs);
   };
 
@@ -275,13 +285,17 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
       return;
     }
 
-    const comp = addedContent.find((comp) => comp.id === compId);
-    setSelectedComponent({ id: compId, isMovable: comp.isMovable });
+    const comp = allAddedContent.find((comp) => comp.id === compId);
+    setSelectedComponent({
+      id: compId,
+      isMovable: comp.isMovable,
+      disabled: comp.disabled,
+    });
   };
 
   const handleCreatePage = async (subdomain: string) => {
     const alreadyTaken = await getPage(subdomain);
-    if (alreadyTaken !== null || alreadyTaken.error) {
+    if (alreadyTaken && (alreadyTaken !== null || alreadyTaken.error)) {
       // toast({
       //   title: "Something went wrong.",
       //   description: "This subdomain has already been taken.",
@@ -290,7 +304,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
       return { error: "This subdomain has already been taken." };
     }
 
-    const page = await createPage(addedContent, subdomain, {
+    const page = await createPage(allAddedContent, subdomain, {
       parentMargin: parentMargin,
     } as IOtherData);
     if (page && page.error) {
@@ -303,7 +317,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
   };
 
   const handleUpdatePage = (subdomain: string) => {
-    updatePage(addedContent, subdomain, { parentMargin: parentMargin } as IOtherData);
+    updatePage(allAddedContent, subdomain, { parentMargin: parentMargin } as IOtherData);
   };
 
   const shouldCreateOrUpdate = (subdomain?: string) => {
@@ -353,10 +367,14 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
       y: elementToBeAdded.position.y + availableSpace.deltaY,
     };
 
-    setAddedContent((prevContent) => [...prevContent, elementToBeAdded]);
+    setAddedContent((prev) => ({
+      ...prev,
+      byId: { ...prev.byId, [elementToBeAdded.id]: elementToBeAdded },
+      allIds: [...prev.allIds, elementToBeAdded.id],
+    }));
 
     if (elementToBeAdded.tag === "nav bar") {
-      await handlePositionChange("Left"); // default value
+      await handlePositionChange("Left", elementToBeAdded.id); // default value
     }
 
     updateParentMargin(setParentMargin, componentRefs);
@@ -364,8 +382,27 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
   };
 
   const handleDelete = (compId: number) => {
-    const updatedContent = addedContent.filter((comp) => comp.id != compId);
-    setAddedContent([...updatedContent]);
+    const updatedAllIds = addedContent.allIds.filter((id) => id !== compId);
+
+    const { [compId]: removed, ...filteredById } = addedContent.byId;
+    let updatedById = {};
+
+    // TODO verify if the otherElements array gets updated properly
+    for (const id in filteredById) {
+      const updatedComp =
+        addedContent.byId[id].otherElements &&
+        addedContent.byId[id].otherElements.length > 0
+          ? {
+              ...addedContent.byId[id],
+              otherElements: addedContent.byId[id].otherElements.filter(
+                (child) => child.id !== compId,
+              ),
+            }
+          : addedContent.byId[id];
+      updatedById = { ...updatedById, [updatedComp.id]: updatedComp };
+    }
+
+    setAddedContent({ byId: updatedById, allIds: updatedAllIds });
   };
 
   const handleDragStart = (event: DragEndEvent) => {
@@ -398,9 +435,9 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
     }
     const elementId = active.id as string;
     const newStatus = over.id as string | number;
-    const draggedComponent = addedContent.find((item) => item.id === elementId);
-    const isParentComponent = addedContent.find(
-      (component) => component.id == newStatus && component.dnd == "Droppable"
+    const draggedComponent = allAddedContent.find((item) => item.id === elementId);
+    const isParentComponent = allAddedContent.find(
+      (component) => component.id == newStatus && component.dnd == "Droppable",
     );
 
     const isPositionValid = validatePosition(
@@ -408,7 +445,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
       draggedComponent,
       screenSize,
       parentMargin,
-      isParentComponent
+      isParentComponent,
     );
 
     const isSwap =
@@ -425,48 +462,72 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
       });
     }
 
-    if (draggedComponent.parentId !== null && !isSwap) {
-      return;
-    }
+    const droppedComp = allAddedContent.find((item) => item.id === newStatus);
+
+    // TODO the collisions are exactly 2 when swapping elements within the navbar.
+    // if (
+    //   draggedComponent.parentId !== null &&
+    //   droppedComp &&
+    //   draggedComponent.parentId !== droppedComp.parentId &&
+    //   collisions.length >= 2
+    // ) {
+    //   // if (draggedComponent.parentId !== null && collisions.length >= 2) {
+    //   console.log("draggedComp:", draggedComponent);
+    //   console.log("collisions:", collisions);
+    //   console.log("draggedComponent.parentId !== null && !isSwap");
+    //   return;
+    // }
 
     // handles the swapping of components (if elementId == newStatus, it just means the component has been moved, and not swapped)
     if (isSwap) {
-      swapPositions(addedContent, setAddedContent, draggedComponent, newStatus);
+      swapPositions(allAddedContent, setAddedContent, draggedComponent, newStatus);
     } else {
-      updatePosition(setAddedContent, elementId, newStatus, delta, screenSize);
+      if (elementId === newStatus) {
+        // element has been dropped onto itself
+        return;
+      }
+
+      updatePosition(
+        allAddedContent,
+        setAddedContent,
+        elementId,
+        newStatus,
+        delta,
+        screenSize,
+      );
       setShouldCheckForCollision(true);
     }
   };
 
   const handleInputChange = (compId: number, text: string, blocks?: PartialBlock[]) => {
-    setAddedContent((prevAddedContent) => {
-      return prevAddedContent.map((component) => {
-        if (component.id === compId) {
-          return {
-            ...component,
-            input: text,
-            inputBlocks: blocks,
-          };
-        }
-        return component;
-      });
-    });
+    setAddedContent((prev) => ({
+      ...prev,
+      byId: {
+        ...prev.byId,
+        [compId]: {
+          ...prev.byId[compId],
+          input: text,
+          inputBlocks: blocks,
+        },
+      },
+    }));
   };
 
-  const handleUpdateCompSize = (compId: number, d: ResizeCallback.delta) => {
-    const isChildComponent = addedContent.find(
-      (component) => component.id == compId && component.parentId !== null
+  const handleUpdateCompSize = (compId: number, d: NumberSize) => {
+    const isChildComponent = allAddedContent.find(
+      (component) => component.id == compId && component.parentId !== null,
     );
-    const parentComp = addedContent.find(
-      (component) => component.id === isChildComponent?.parentId
-    );
+    const parentComp = isChildComponent
+      ? allAddedContent.find((component) => component.id === isChildComponent.parentId)
+      : null;
+
     const isChildSizeValid = validateSize(
       d,
       findResizingComponent(),
       isChildComponent,
       parentMargin,
-      parentComp.size,
-      screenSize
+      parentComp,
+      screenSize,
     );
 
     if (isChildComponent && !isChildSizeValid) {
@@ -480,23 +541,27 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
       compId,
       d,
       calculateDelta,
-      setAddedContent
+      setAddedContent,
     );
     setTempSizeDelta({ height: 0, width: 0, id: null });
     updateParentMargin(setParentMargin, componentRefs);
   };
 
   const toggleComponentDraggable = () => {
-    setAddedContent((prevAddedContent) => {
-      return prevAddedContent.map((component) => {
-        if (component.id === selectedComponent?.id && component.disabled !== null) {
-          return {
-            ...component,
-            disabled: !component.disabled,
-          };
-        }
-        return component;
-      });
+    setAddedContent((prev) => {
+      const selectedComp = prev.byId[selectedComponent?.id];
+      const prevDisabled = selectedComp.disabled;
+
+      return {
+        ...prev,
+        byId: {
+          ...prev.byId,
+          [selectedComp.id]: {
+            ...selectedComp,
+            disabled: prevDisabled !== null || undefined ? !prevDisabled : null,
+          },
+        },
+      };
     });
   };
 
@@ -505,9 +570,11 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
       return;
     }
 
-    const currentResizingComp = addedContent.find((item) => item.id == tempSizeDelta.id);
+    const currentResizingComp = allAddedContent.find(
+      (item) => item.id == tempSizeDelta.id,
+    );
     return currentResizingComp;
-  }, [addedContent, tempSizeDelta.id]);
+  }, [allAddedContent, tempSizeDelta.id]);
 
   const roughlyNearbyComponents = useMemo(() => {
     const currentResizingComp = findResizingComponent();
@@ -516,7 +583,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
     }
     const nearbyDistance = 200;
 
-    const nearbyComponents = addedContent.filter(
+    const nearbyComponents = allAddedContent.filter(
       (item) =>
         currentResizingComp.position.x < item.position.x + item.size.width &&
         currentResizingComp.position.x + currentResizingComp.size.width + nearbyDistance >
@@ -526,10 +593,10 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
           currentResizingComp.size.height +
           nearbyDistance >
           item.position.y &&
-        item.id !== currentResizingComp.id
+        item.id !== currentResizingComp.id,
     );
     return nearbyComponents;
-  }, [addedContent, findResizingComponent]);
+  }, [allAddedContent, findResizingComponent]);
 
   // TODO merge this function with isCompColliding?
   const isResizingCompColliding = useCallback(
@@ -548,11 +615,11 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
           currentResizingComp.position.y < item.position.y + item.size.height &&
           currentResizingComp.position.y + currentResizingComp.size.height + heightDelta >
             item.position.y &&
-          item.id !== currentResizingComp.id
+          item.id !== currentResizingComp.id,
       );
       return collidingComponents;
     },
-    [roughlyNearbyComponents, tempSizeDelta]
+    [roughlyNearbyComponents, tempSizeDelta],
   );
 
   const findAvailableSpace = useCallback(
@@ -595,7 +662,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
             comp,
             screenSize,
             parentMargin,
-            isParentComponent
+            isParentComponent,
           );
 
           if (isPosValidX) {
@@ -612,7 +679,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
             comp,
             screenSize,
             parentMargin,
-            isParentComponent
+            isParentComponent,
           );
 
           if (isPosValidY) {
@@ -639,12 +706,12 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [parentMargin, screenSize]
+    [parentMargin, screenSize],
   );
 
   const isCompColliding = useCallback(
     (comp, deltaX, deltaY, currentResizingComp) => {
-      const collidingComponents = addedContent.filter(
+      const collidingComponents = allAddedContent.filter(
         (item) =>
           // TODO switch to <= / >= ?
           comp.position.x + deltaX < item.position.x + item.size.width &&
@@ -652,11 +719,11 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
           comp.position.y + deltaY < item.position.y + item.size.height &&
           comp.position.y + comp.size.height + deltaY > item.position.y &&
           item.id !== comp.id &&
-          item.id !== currentResizingComp
+          item.id !== currentResizingComp,
       );
       return collidingComponents;
     },
-    [addedContent]
+    [allAddedContent],
   );
 
   const shouldResizeOrMove = useCallback(
@@ -703,11 +770,11 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
 
       return isOutOfScreen;
     },
-    [parentMargin, screenSize]
+    [parentMargin, screenSize],
   );
 
   const isCollidingAfterUpdate = useCallback(() => {
-    const comp = addedContent.find((comp) => comp.id === draggingComponentId);
+    const comp = allAddedContent.find((comp) => comp.id === draggingComponentId);
     if (comp) {
       const isColliding = isCompColliding(comp, 0, 0, null);
       let deltaX = 0;
@@ -772,30 +839,28 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
         // const currentAxis = Math.abs(deltaX) < Math.abs(deltaY) ? "x" : "y";
         const currentAxis = deltaX < deltaY ? "x" : "y";
 
-        setAddedContent((prevAddedContent) => {
-          return prevAddedContent.map((component) => {
-            if (component.id === comp.id) {
-              return {
-                ...component,
-                position: {
-                  ...component.position,
-                  x:
-                    currentAxis === "x"
-                      ? component.position.x + deltaX
-                      : component.position.x,
-                  y:
-                    currentAxis === "y"
-                      ? component.position.y + deltaY
-                      : component.position.y,
-                },
-              };
-            }
-            return component;
-          });
-        });
+        setAddedContent((prev) => ({
+          ...prev,
+          byId: {
+            ...prev.byId,
+            [comp.id]: {
+              ...prev.byId[comp.id],
+              position: {
+                x:
+                  currentAxis === "x"
+                    ? prev.byId[comp.id].position.x + deltaX
+                    : prev.byId[comp.id].position.x,
+                y:
+                  currentAxis === "y"
+                    ? prev.byId[comp.id].position.y + deltaY
+                    : prev.byId[comp.id].position.y,
+              },
+            },
+          },
+        }));
       }
     }
-  }, [addedContent, draggingComponentId, isCompColliding]);
+  }, [allAddedContent, draggingComponentId, isCompColliding]);
 
   useEffect(() => {
     if (shouldCheckForCollision) {
@@ -804,6 +869,7 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
     }
   }, [addedContent, findAvailableSpace, isCollidingAfterUpdate, shouldCheckForCollision]);
 
+  // handles the collision between the resizing component and its adjacent components
   useEffect(() => {
     const { height: heightDelta, width: widthDelta, id: idDelta } = tempSizeDelta;
 
@@ -820,145 +886,145 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
 
       // const interval = setInterval(() => {
       if (collidingComponents) {
-        setAddedContent((prevAddedContent) => {
-          const updatedContent = [...prevAddedContent];
-          let didChange = false;
+        const updatedContent = allAddedContent;
+        let didChange = false;
 
-          for (let i = 0; i < updatedContent.length; i++) {
-            const item = updatedContent[i];
-            const isColliding = collidingComponents.find((comp) => comp.id === item.id);
+        for (let i = 0; i < updatedContent.length; i++) {
+          const item = updatedContent[i];
+          const isColliding = collidingComponents.find((comp) => comp.id === item.id);
 
-            if (isColliding) {
-              const deltaX = calculateDelta(currentResizingComp, item, widthDelta, "X");
-              const deltaY = calculateDelta(currentResizingComp, item, heightDelta, "Y");
+          if (isColliding) {
+            const deltaX = calculateDelta(currentResizingComp, item, widthDelta, "X");
+            const deltaY = calculateDelta(currentResizingComp, item, heightDelta, "Y");
 
-              const isCollidingWithOtherComps = isCompColliding(
-                item,
-                deltaX,
-                deltaY,
-                currentResizingComp.id
-              );
-              let availableDeltaX = 0;
-              let availableDeltaY = 0;
-              let collidingCompIndex = null;
+            const isCollidingWithOtherComps = isCompColliding(
+              item,
+              deltaX,
+              deltaY,
+              currentResizingComp.id,
+            );
+            let availableDeltaX = 0;
+            let availableDeltaY = 0;
+            let collidingCompIndex = null;
 
-              if (isCollidingWithOtherComps) {
-                isCollidingWithOtherComps.forEach((otherComp) => {
-                  const index = updatedContent.findIndex((c) => c.id === otherComp.id);
-                  if (index !== -1) {
-                    const collidingComp = updatedContent[index];
-                    collidingCompIndex = index;
+            if (isCollidingWithOtherComps) {
+              isCollidingWithOtherComps.forEach((otherComp) => {
+                const index = updatedContent.findIndex((c) => c.id === otherComp.id);
+                if (index !== -1) {
+                  const collidingComp = updatedContent[index];
+                  collidingCompIndex = index;
 
-                    const resizeOrMove = shouldResizeOrMove(
-                      collidingComp,
-                      deltaX,
-                      deltaY
-                    );
+                  const resizeOrMove = shouldResizeOrMove(collidingComp, deltaX, deltaY);
 
-                    if (
-                      resizeOrMove &&
-                      collidingComp.size.width - deltaX < collidingComp.size.minWidth
-                    ) {
-                      availableDeltaX =
-                        collidingComp.size.width - collidingComp.size.minWidth;
-                    }
-
-                    if (
-                      resizeOrMove &&
-                      collidingComp.size.height - deltaY < collidingComp.size.minHeight
-                    ) {
-                      availableDeltaY =
-                        collidingComp.size.height - collidingComp.size.minHeight;
-                    }
-
-                    if (resizeOrMove === null) {
-                      return;
-                    }
-
-                    const currentAxis = deltaX <= deltaY ? "x" : "y";
-
-                    const adjustWidth = currentAxis === "x" && resizeOrMove;
-                    const adjustHeight = currentAxis === "y" && resizeOrMove;
-
-                    const moveX = currentAxis === "x" && !resizeOrMove;
-                    const moveY = currentAxis === "y" && !resizeOrMove;
-
-                    updatedContent[index] = {
-                      ...collidingComp,
-                      size: {
-                        ...collidingComp.size,
-                        width: adjustWidth
-                          ? collidingComp.size.width - deltaX
-                          : collidingComp.size.width,
-                        height: adjustHeight
-                          ? collidingComp.size.height - deltaY
-                          : collidingComp.size.height,
-                      },
-                      position: {
-                        ...collidingComp.position,
-                        x: moveX
-                          ? collidingComp.position.x + deltaX
-                          : collidingComp.position.x,
-                        y: moveY
-                          ? collidingComp.position.y + deltaY
-                          : collidingComp.position.y,
-                      },
-                    };
-                    didChange = true;
+                  if (
+                    resizeOrMove &&
+                    collidingComp.size.width - deltaX < collidingComp.size.minWidth
+                  ) {
+                    availableDeltaX =
+                      collidingComp.size.width - collidingComp.size.minWidth;
                   }
-                });
-              }
 
-              const finalDeltaX = availableDeltaX > 0 ? availableDeltaX : deltaX;
-              const finalDeltaY = availableDeltaY > 0 ? availableDeltaY : deltaY;
-              const adjacentComp = updatedContent[collidingCompIndex];
+                  if (
+                    resizeOrMove &&
+                    collidingComp.size.height - deltaY < collidingComp.size.minHeight
+                  ) {
+                    availableDeltaY =
+                      collidingComp.size.height - collidingComp.size.minHeight;
+                  }
 
-              const resizeOrMove = shouldResizeOrMove(
-                item,
-                finalDeltaX,
-                finalDeltaY,
-                adjacentComp
-              );
+                  if (resizeOrMove === null) {
+                    return;
+                  }
 
-              if (resizeOrMove === null) {
-                continue;
-              }
+                  const currentAxis = deltaX <= deltaY ? "x" : "y";
 
-              const currentAxis = finalDeltaX <= finalDeltaY ? "x" : "y";
-              const shouldAdjustWidth = currentAxis === "x" && resizeOrMove;
-              const shouldAdjustHeight = currentAxis === "y" && resizeOrMove;
-              const shouldMoveX = currentAxis === "x" && !resizeOrMove;
-              const shouldMoveY = currentAxis === "y" && !resizeOrMove;
+                  const adjustWidth = currentAxis === "x" && resizeOrMove;
+                  const adjustHeight = currentAxis === "y" && resizeOrMove;
 
-              updatedContent[i] = {
-                ...item,
-                size: {
-                  ...item.size,
-                  width: shouldAdjustWidth
-                    ? item.size.width - finalDeltaX
-                    : item.size.width,
-                  height: shouldAdjustHeight
-                    ? item.size.height - finalDeltaY
-                    : item.size.height,
-                },
-                position: {
-                  ...item.position,
-                  x: shouldMoveX ? item.position.x + finalDeltaX : item.position.x,
-                  y: shouldMoveY ? item.position.y + finalDeltaY : item.position.y,
-                },
-              };
-              didChange = true;
+                  const moveX = currentAxis === "x" && !resizeOrMove;
+                  const moveY = currentAxis === "y" && !resizeOrMove;
+
+                  updatedContent[index] = {
+                    ...collidingComp,
+                    size: {
+                      ...collidingComp.size,
+                      width: adjustWidth
+                        ? collidingComp.size.width - deltaX
+                        : collidingComp.size.width,
+                      height: adjustHeight
+                        ? collidingComp.size.height - deltaY
+                        : collidingComp.size.height,
+                    },
+                    position: {
+                      ...collidingComp.position,
+                      x: moveX
+                        ? collidingComp.position.x + deltaX
+                        : collidingComp.position.x,
+                      y: moveY
+                        ? collidingComp.position.y + deltaY
+                        : collidingComp.position.y,
+                    },
+                  };
+                  didChange = true;
+                }
+              });
             }
+
+            const finalDeltaX = availableDeltaX > 0 ? availableDeltaX : deltaX;
+            const finalDeltaY = availableDeltaY > 0 ? availableDeltaY : deltaY;
+            const adjacentComp = updatedContent[collidingCompIndex];
+
+            const resizeOrMove = shouldResizeOrMove(
+              item,
+              finalDeltaX,
+              finalDeltaY,
+              adjacentComp,
+            );
+
+            if (resizeOrMove === null) {
+              continue;
+            }
+
+            const currentAxis = finalDeltaX <= finalDeltaY ? "x" : "y";
+            const shouldAdjustWidth = currentAxis === "x" && resizeOrMove;
+            const shouldAdjustHeight = currentAxis === "y" && resizeOrMove;
+            const shouldMoveX = currentAxis === "x" && !resizeOrMove;
+            const shouldMoveY = currentAxis === "y" && !resizeOrMove;
+
+            updatedContent[i] = {
+              ...item,
+              size: {
+                ...item.size,
+                width: shouldAdjustWidth
+                  ? item.size.width - finalDeltaX
+                  : item.size.width,
+                height: shouldAdjustHeight
+                  ? item.size.height - finalDeltaY
+                  : item.size.height,
+              },
+              position: {
+                ...item.position,
+                x: shouldMoveX ? item.position.x + finalDeltaX : item.position.x,
+                y: shouldMoveY ? item.position.y + finalDeltaY : item.position.y,
+              },
+            };
+            didChange = true;
           }
-          if (!didChange) return prevAddedContent;
-          return updatedContent;
-        });
+        }
+
+        if (!didChange) return;
+        setAddedContent((prev) => ({
+          ...prev,
+          byId: {
+            ...updatedContent,
+          },
+        }));
       }
     }
-
     // }, 50);
     // return () => clearInterval(interval);
   }, [
+    allAddedContent,
     findResizingComponent,
     isCompColliding,
     isResizingCompColliding,
@@ -1009,9 +1075,10 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
             handleSelectComponent(null);
           }}
         >
-          {addedContent &&
-            addedContent
-              .filter((component) => component.dnd === "Droppable")
+          {allAddedContent &&
+            allAddedContent.length > 0 &&
+            allAddedContent
+              ?.filter((component) => component.dnd === "Droppable")
               .map((component) => (
                 <Droppable
                   id={component.id}
@@ -1061,9 +1128,6 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                         handlePositionChange={handlePositionChange}
                         previewMode={previewMode}
                         input={component.input}
-                        // childElements={addedContent.filter(
-                        //   (items) => items.parentId === component.id
-                        // )}
                         childElements={component.otherElements}
                         tempSizeDelta={tempSizeDelta}
                         // TODO handle this prop for any future refs
@@ -1109,13 +1173,13 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
             className="h-full w-full z-40"
           >
             <SortableContext
-              items={addedContent
+              items={addedContent?.allIds
                 ?.filter((component) => component.parentId === null)
                 .map((component) => component.id)}
               strategy={rectSwappingStrategy}
             >
               {!isLoading && props.edit && !authenticated ? <AuthError /> : null}
-              {addedContent.length === 0 && isLoading && props.edit && (
+              {allAddedContent.length === 0 && isLoading && props.edit && (
                 <div className="flex flex-col w-full h-full justify-center place-items-center gap-2">
                   {/* TODO replace with a progress bar? */}
                   <Spinner size="lg" className="bg-white" />
@@ -1123,10 +1187,10 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                 </div>
               )}
 
-              {addedContent
+              {allAddedContent
                 .filter(
                   (component) =>
-                    component.parentId === null && component.dnd !== "Droppable"
+                    component.parentId === null && component.dnd !== "Droppable",
                 )
                 .map((component) => (
                   <div
@@ -1203,12 +1267,12 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                   // easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)",
                 }}
               >
-                {addedContent
+                {allAddedContent
                   .filter(
                     (component) =>
                       component.id !== tempSizeDelta.id &&
                       component?.id === draggingComponentId &&
-                      !component.disabled
+                      !component.disabled,
                   )
                   .map((component) => (
                     <div

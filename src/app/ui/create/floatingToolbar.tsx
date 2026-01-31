@@ -20,7 +20,7 @@ import {
   TransformIcon,
   Cross1Icon,
 } from "@radix-ui/react-icons";
-import { PositionButtons } from "@/app/ui/create/components/positionButtons";
+import { PositionButtons } from "@/app/ui/create/positionButtons";
 import { useState } from "react";
 import SubdomainDialog from "@/app/ui/create/subdomainDialog";
 
@@ -41,6 +41,11 @@ export default function FloatingToolbar(props) {
     toggleComponentDraggable,
   } = props;
   const { edit } = editorProps ?? {};
+
+  const shouldShowDrag =
+    selectedComponent &&
+    selectedComponent?.id !== null &&
+    selectedComponent.disabled !== (null || undefined);
 
   // TODO disable while loading
   return (
@@ -67,7 +72,10 @@ export default function FloatingToolbar(props) {
                 </Tooltip>
 
                 <PopoverContent>
-                  <PositionButtons handlePositionChange={handlePositionChange} />
+                  <PositionButtons
+                    handlePositionChange={handlePositionChange}
+                    id={selectedComponent.id}
+                  />
                 </PopoverContent>
               </Popover>
             )}
@@ -92,14 +100,14 @@ export default function FloatingToolbar(props) {
               </TooltipTrigger>
               <TooltipContent>Change color</TooltipContent>
             </Tooltip>
-            {selectedComponent && selectedComponent?.id !== null && (
+            {shouldShowDrag && (
               <>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       size="icon"
                       variant="ghost"
-                      name="move"
+                      name="drag"
                       onClick={() => toggleComponentDraggable()}
                     >
                       <MoveIcon

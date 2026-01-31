@@ -18,6 +18,7 @@ export function TextArea(props: RenderedDynamicElement) {
   } = props;
 
   const handleInput = (newInputValue: string, newBlockValue: Block[]) => {
+    // newInputValue is the input, but with all html tags in order to store its style
     handleInputChange(id, newInputValue, newBlockValue);
   };
 
