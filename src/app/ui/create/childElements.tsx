@@ -23,7 +23,7 @@ export const ChildElements = ({
   } = handlers;
   return childElements?.map((element) => {
     const mappedComponent = CreateComponents.find(
-      (component) => component.tag === element.tag
+      (component) => component.tag === element.tag,
     );
 
     if (!mappedComponent) return;

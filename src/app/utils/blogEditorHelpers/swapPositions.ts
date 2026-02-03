@@ -7,10 +7,9 @@ export const swapPositions = (
   allAddedContent,
   setAddedContent,
   draggedComponent,
-  newStatus
+  newStatus,
 ): ISwapPositions => {
   // const { allAddedContent, setAddedContent, draggedComponent, newStatus } = props;
-  console.log({ allAddedContent, setAddedContent, draggedComponent, newStatus });
   const swappedComponent = allAddedContent.find((item) => item.id === newStatus);
 
   const sameParent =
@@ -19,22 +18,21 @@ export const swapPositions = (
     draggedComponent.parentId === swappedComponent.parentId;
 
   // swap between child components within a parent component
-  // TODO check if this still works
   if (sameParent) {
     const parentComp = allAddedContent.find(
-      (item) => item.id === draggedComponent.parentId
+      (item) => item.id === draggedComponent.parentId,
     );
     const draggedCompIndex = parentComp.otherElements.findIndex(
-      (element) => element.id === draggedComponent.id
+      (element) => element.id === draggedComponent.id,
     );
     const swappedCompIndex = parentComp.otherElements.findIndex(
-      (element) => element.id === swappedComponent.id
+      (element) => element.id === swappedComponent.id,
     );
 
     const reorderedElements = arrayMove(
       parentComp.otherElements,
       draggedCompIndex,
-      swappedCompIndex
+      swappedCompIndex,
     );
 
     setAddedContent((prev) => ({

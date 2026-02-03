@@ -10,35 +10,36 @@ import { CreateComponents } from "@/app/utils/constants";
 /* TODO refactor the props to better utilize the `element` prop and update the `IDynamicElement` type */
 export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
   const [screenSize, setScreenSize] = useState<{ [name: string]: number }>({
-    width: window?.innerWidth,
-    height: window?.innerHeight,
-    initialWidth: window?.innerWidth,
-    initialHeight: window?.innerHeight,
-    // width: 0,
-    // height: 0,
-    // initialWidth: 0,
-    // initialHeight: 0,
+    width: 0,
+    height: 0,
+    initialWidth: 0,
+    initialHeight: 0,
     deltaX: 0,
     deltaY: 0,
   });
 
   useEffect(() => {
     const handleResize = () => {
-      setScreenSize({
-        ...screenSize,
+      setScreenSize((prev) => ({
+        ...prev,
         width: window.innerWidth,
         height: window.innerHeight,
-        deltaX: window.innerWidth - screenSize.initialWidth,
-        deltaY: window.innerHeight - screenSize.initialHeight,
-      });
+        initialWidth: prev.initialWidth === 0 ? window.innerWidth : prev.initialWidth,
+        initialHeight: prev.initialHeight === 0 ? window.innerHeight : prev.initialHeight,
+        deltaX: prev.initialWidth === 0 ? 0 : window.innerWidth - prev.initialWidth,
+        deltaY: prev.initialHeight === 0 ? 0 : window.innerHeight - prev.initialHeight,
+      }));
     };
+
+    // run once on mount
+    handleResize();
 
     window.addEventListener("resize", handleResize);
 
     return () => {
       window.removeEventListener("resize", handleResize);
     };
-  }, [screenSize]);
+  }, []);
 
   const calculatePosition = useCallback(
     (pos: string) => {
@@ -92,7 +93,7 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
       props.mainGridRef,
       screenSize?.deltaX,
       screenSize?.deltaY,
-    ]
+    ],
   );
 
   // TODO reuse previewMode?
@@ -137,7 +138,7 @@ export function DynamicElement(props: PropsWithChildren<IDynamicElement>) {
                   props.isStaticRender
                     ? {
                         transform: `translate3d(${calculatePosition(
-                          "X"
+                          "X",
                         )}px, ${calculatePosition("Y")}px, 0)`,
                         width: props.element.size.width,
                         height: props.element.size.height,

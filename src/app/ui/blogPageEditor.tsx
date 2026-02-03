@@ -51,7 +51,6 @@ interface IBlogPageEditor {
 }
 
 export default function BlogPageEditor(props: IBlogPageEditor) {
-  // const [addedContent, setAddedContent] = useState<IElement[]>([]);
   const [addedContent, setAddedContent] = useState({ byId: {}, allIds: [] });
 
   const [lastId, setLastId] = useState<number>(0);
@@ -185,10 +184,10 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
         ...prev,
         width: window.innerWidth,
         height: window.innerHeight,
-        initialWidth: prev.initialWidth == 0 ? window.innerWidth : 0,
-        initialHeight: prev.initialHeight == 0 ? window.innerHeight : 0,
-        deltaX: prev.initialWidth ?? window.innerWidth - prev.initialWidth,
-        deltaY: prev.initialHeight ?? window.innerHeight - prev.initialHeight,
+        initialWidth: prev.initialWidth === 0 ? window.innerWidth : prev.initialWidth,
+        initialHeight: prev.initialHeight === 0 ? window.innerHeight : prev.initialHeight,
+        deltaX: prev.initialWidth === 0 ? 0 : window.innerWidth - prev.initialWidth,
+        deltaY: prev.initialHeight === 0 ? 0 : window.innerHeight - prev.initialHeight,
       }));
     };
 
@@ -844,16 +843,10 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
           byId: {
             ...prev.byId,
             [comp.id]: {
-              ...prev.byId[comp.id],
+              ...comp,
               position: {
-                x:
-                  currentAxis === "x"
-                    ? prev.byId[comp.id].position.x + deltaX
-                    : prev.byId[comp.id].position.x,
-                y:
-                  currentAxis === "y"
-                    ? prev.byId[comp.id].position.y + deltaY
-                    : prev.byId[comp.id].position.y,
+                x: currentAxis === "x" ? comp.position.x + deltaX : comp.position.x,
+                y: currentAxis === "y" ? comp.position.y + deltaY : comp.position.y,
               },
             },
           },
@@ -1032,21 +1025,21 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
     tempSizeDelta,
   ]);
 
-  // const calculateTranslate = (component, deltaX, deltaY) => {
-  //   const isColliding = isCompColliding(component, deltaX, deltaY, null);
-  //   if (isColliding.length > 0) {
-  //     console.log("colliding", component.id, component.position.x, component.position.y);
-  //     return {
-  //       transform: `translate3d(${component.position.x}px, ${component.position.y}px, 0)`,
-  //     };
-  //   }
+  const calculateTranslate = (component, deltaX, deltaY) => {
+    const isColliding = isCompColliding(component, deltaX, deltaY, null);
+    if (isColliding.length > 0) {
+      console.log("colliding", component.id, component.position.x, component.position.y);
+      return {
+        transform: `translate3d(${component.position.x}px, ${component.position.y}px, 0)`,
+      };
+    }
 
-  //   const X = component.position.x + deltaX < 0 ? 0 : component.position.x + deltaX;
-  //   const Y = component.position.y + deltaY < 0 ? 0 : component.position.y + deltaY;
+    const X = component.position.x + deltaX < 0 ? 0 : component.position.x + deltaX;
+    const Y = component.position.y + deltaY < 0 ? 0 : component.position.y + deltaY;
 
-  //   console.log("not colliding", component.id, X, Y);
-  //   return { transform: `translate3d(${X}px, ${Y}px, 0)` };
-  // };
+    console.log("not colliding", component.id, X, Y);
+    return `translate3d(${X}px, ${Y}px, 0)`;
+  };
 
   return (
     // TODO remove flex-col?
@@ -1197,15 +1190,16 @@ export default function BlogPageEditor(props: IBlogPageEditor) {
                     key={component.id}
                     className="z-5 absolute border-2 border-purple-400 border-dashed"
                     style={{
-                      transform: `translate3d(${
-                        component.position.x + screenSize.deltaX < 0
-                          ? 0
-                          : component.position.x + screenSize.deltaX
-                      }px, ${
-                        component.position.y + screenSize.deltaY < 0
-                          ? 0
-                          : component.position.y + screenSize.deltaY
-                      }px, 0)`,
+                      // transform: `translate3d(${
+                      //   component.position.x + screenSize.deltaX < 0
+                      //     ? 0
+                      //     : component.position.x + screenSize.deltaX
+                      // }px, ${
+                      //   component.position.y + screenSize.deltaY < 0
+                      //     ? 0
+                      //     : component.position.y + screenSize.deltaY
+                      // }px, 0)`,
+                      transform: `${calculateTranslate(component, screenSize.deltaX, screenSize.deltaY)}`,
                     }}
                     ref={draggableRef}
                     onClick={(e) => {
